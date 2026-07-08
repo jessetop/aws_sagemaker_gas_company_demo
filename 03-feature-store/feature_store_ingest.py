@@ -13,9 +13,9 @@ Cost note: we ingest only a small sample and disable the online store by default
 online store, then delete the group promptly.
 
 Usage:
-    python feature_store_ingest.py --bucket roi-smdemo-029331796573-us-east-2 \
+    python feature_store_ingest.py --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2 --rows 2000
+        --profile roitraining --region us-east-1 --rows 2000
 """
 
 import argparse
@@ -29,13 +29,19 @@ import pandas as pd
 import sagemaker
 from sagemaker.feature_store.feature_group import FeatureGroup
 
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
+
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)  # --profile / --region / --bucket / --role-arn
     p.add_argument("--rows", type=int, default=2000)
     p.add_argument("--online", action="store_true", help="enable online store")
     p.add_argument("--prefix", default="ml/taxi")

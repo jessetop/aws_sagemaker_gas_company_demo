@@ -13,15 +13,24 @@ deliberately simple ("drop dupes, drop fields") to mirror common Data Wrangler
 transforms for the side-by-side.
 
 Usage:
-    python create_visual_flow.py --bucket roi-smdemo-029331796573-us-east-2 \
+    python create_visual_flow.py --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2
+        --profile roitraining --region us-east-1
 """
 
 import argparse
 import sys
 
 import boto3
+
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
 
 JOB_NAME = "roi-smdemo-taxi-visual-flow"
 # Tag to the user's Unified Studio project (Default_06222026_Domain).
@@ -69,10 +78,7 @@ def build_nodes(bucket: str) -> dict:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     args = p.parse_args()
 
     glue = boto3.Session(profile_name=args.profile, region_name=args.region).client("glue")

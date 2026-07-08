@@ -10,9 +10,9 @@ managed Unified Studio notebook with none of this plumbing.
 
 Usage:
     python emr_serverless_submit.py \
-        --bucket roi-smdemo-029331796573-us-east-2 \
+        --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2
+        --profile roitraining --region us-east-1
 """
 
 import argparse
@@ -20,6 +20,15 @@ import sys
 import time
 
 import boto3
+
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
 
 
 def get_or_create_app(emr, name: str) -> str:
@@ -40,10 +49,7 @@ def get_or_create_app(emr, name: str) -> str:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     args = p.parse_args()
 
     session = boto3.Session(profile_name=args.profile, region_name=args.region)

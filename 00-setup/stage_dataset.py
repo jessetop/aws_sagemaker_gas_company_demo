@@ -9,8 +9,8 @@ Cost: a few cents of S3 storage (~48 MB). The dataset is free, public, no auth.
 
 Usage:
     python stage_dataset.py \
-        --bucket roi-smdemo-029331796573-us-east-2 \
-        --profile roitraining --region us-east-2
+        --bucket roi-smdemo-029331796573-us-east-1 \
+        --profile roitraining --region us-east-1
 
 Requirement traceability (Kiro Req 1): public dataset >100k samples (this has
 ~2.96M rows), uploaded to a learner-provided S3 path, with retries on download
@@ -27,6 +27,15 @@ import boto3
 from botocore.exceptions import ClientError
 from urllib.request import urlretrieve
 from urllib.error import URLError
+
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
 
 # Official NYC TLC open-data files (CloudFront-distributed, no credentials).
 TRIPS_URL = "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet"
@@ -66,9 +75,7 @@ def upload(s3, bucket: str, src: Path, key: str) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Stage NYC taxi data to S3.")
-    parser.add_argument("--bucket", required=True, help="Target S3 bucket name")
-    parser.add_argument("--profile", default="roitraining", help="AWS CLI profile")
-    parser.add_argument("--region", default="us-east-2", help="AWS region")
+    add_common_args(parser, role=False)
     args = parser.parse_args()
 
     session = boto3.Session(profile_name=args.profile, region_name=args.region)

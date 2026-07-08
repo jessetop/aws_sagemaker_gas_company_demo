@@ -13,8 +13,8 @@ Usage:
     python deploy_and_infer.py \
         --model-data s3://.../model.tar.gz \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --bucket roi-smdemo-029331796573-us-east-2 \
-        --profile roitraining --region us-east-2
+        --bucket roi-smdemo-029331796573-us-east-1 \
+        --profile roitraining --region us-east-1
 """
 
 import argparse
@@ -27,14 +27,20 @@ from sagemaker.serializers import CSVSerializer
 from sagemaker.serverless import ServerlessInferenceConfig
 from sagemaker.sklearn.model import SKLearnModel
 
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
+
 
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--model-data", required=True, help="s3:// path to model.tar.gz")
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     p.add_argument("--prefix", default="ml/taxi")
     args = p.parse_args()
 

@@ -14,9 +14,9 @@ Cost: one short processing job on the cheapest instance, then done.
 Usage:
     python clarify_bias_explainability.py \
         --model-name roi-smdemo-taxi-model \
-        --bucket roi-smdemo-029331796573-us-east-2 \
+        --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2
+        --profile roitraining --region us-east-1
 """
 
 import argparse
@@ -26,14 +26,20 @@ import boto3
 import sagemaker
 from sagemaker import clarify
 
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
+
 
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--model-name", required=True, help="an existing SageMaker Model")
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     p.add_argument("--prefix", default="ml/taxi")
     p.add_argument("--facet", default="is_airport_trip", help="bias facet column")
     p.add_argument(
@@ -68,11 +74,23 @@ def main() -> int:
         sagemaker_session=sm_sess,
     )
 
-    data_config = clarify.DataConfig(
-        s3_data_input_path=analysis_input,  # small sample (see note above)
-        s3_output_path=f"s3://{b}/clarify",  # no trailing slash (avoids // in keys)
+    # Bias and SHAP each write their own analysis.json/report.*. They MUST go to
+    # separate prefixes — a shared output path means the second job overwrites the
+    # first job's analysis.json (you'd lose the bias metrics). So: clarify/bias and
+    # clarify/shap.
+    headers = full.splitlines()[0].split(",")
+    data_config_bias = clarify.DataConfig(
+        s3_data_input_path=analysis_input,
+        s3_output_path=f"s3://{b}/clarify/bias",
         label="high_tip",
-        headers=full.splitlines()[0].split(","),
+        headers=headers,
+        dataset_type="text/csv",
+    )
+    data_config_shap = clarify.DataConfig(
+        s3_data_input_path=analysis_input,
+        s3_output_path=f"s3://{b}/clarify/shap",
+        label="high_tip",
+        headers=headers,
         dataset_type="text/csv",
     )
     model_config = clarify.ModelConfig(
@@ -87,22 +105,22 @@ def main() -> int:
         facet_name=args.facet,
     )
 
-    # Bias (pre + post) and SHAP explainability in one job.
+    # Bias (pre + post) and SHAP explainability — separate output prefixes.
     processor.run_bias(
-        data_config=data_config,
+        data_config=data_config_bias,
         bias_config=bias_config,
         model_config=model_config,
         model_predicted_label_config=predictions_config,
     )
-    print("bias report:", f"s3://{b}/clarify/")
+    print("bias report:", f"s3://{b}/clarify/bias/")
 
     shap_config = clarify.SHAPConfig(num_samples=100, agg_method="mean_abs")
     processor.run_explainability(
-        data_config=data_config,
+        data_config=data_config_shap,
         model_config=model_config,
         explainability_config=shap_config,
     )
-    print("explainability (SHAP) report:", f"s3://{b}/clarify/")
+    print("explainability (SHAP) report:", f"s3://{b}/clarify/shap/")
     return 0
 
 

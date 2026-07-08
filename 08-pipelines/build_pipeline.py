@@ -23,9 +23,9 @@ model checks can reference it; if you re-run, delete that model first (the clean
 script does).
 
 Usage:
-    python build_pipeline.py --bucket roi-smdemo-029331796573-us-east-2 \
+    python build_pipeline.py --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2 [--start]
+        --profile roitraining --region us-east-1 [--start]
 """
 
 import argparse
@@ -58,6 +58,55 @@ from sagemaker.workflow.properties import PropertyFile
 from sagemaker.workflow.step_collections import RegisterModel
 from sagemaker.workflow.steps import ProcessingStep, TrainingStep
 
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
+
+
+def _patch_repack_launcher_lf():
+    """Force the SDK's generated _repack_script_launcher.sh to LF line endings.
+
+    On Windows the SDK writes that bash launcher in text mode ("w"), so \\n becomes
+    \\r\\n. The Linux repack container then chokes with '#015: not found' and a
+    'model.tar.gz\\r' path, failing the CreateModel repack step. We re-implement the
+    inject method verbatim but with newline="\\n". No-op effect on Linux (LF already).
+    """
+    import tarfile
+    import tempfile
+    from sagemaker.workflow import _utils as _u
+
+    def _fixed(self):
+        fname = _os.path.join(_os.path.dirname(_u.__file__), _u.REPACK_SCRIPT)
+        launcher = _u.REPACK_SCRIPT_LAUNCHER
+        if self._source_dir.lower().startswith("s3://"):
+            with tempfile.TemporaryDirectory() as tmp:
+                extracted = _os.path.join(tmp, "extracted")
+                old_targz = _os.path.join(tmp, "old.tar.gz")
+                _u.download_file_from_url(self._source_dir, old_targz, self.sagemaker_session)
+                with tarfile.open(name=old_targz, mode="r:gz") as t:
+                    _u.custom_extractall_tarfile(t, extracted)
+                _u.shutil.copy2(fname, _os.path.join(extracted, _u.REPACK_SCRIPT))
+                with open(_os.path.join(extracted, launcher), "w", newline="\n") as f:
+                    f.write(_u.LAUNCH_REPACK_SCRIPT_CMD)
+                new_targz = _os.path.join(tmp, "new.tar.gz")
+                with tarfile.open(new_targz, mode="w:gz") as t:
+                    t.add(extracted, arcname=_os.path.sep)
+                _u._save_model(self._source_dir, new_targz, self.sagemaker_session, kms_key=None)
+        else:
+            _u.shutil.copy2(fname, _os.path.join(self._source_dir, _u.REPACK_SCRIPT))
+            with open(_os.path.join(self._source_dir, launcher), "w", newline="\n") as f:
+                f.write(_u.LAUNCH_REPACK_SCRIPT_CMD)
+
+    _u._RepackModelStep._inject_repack_script_and_launcher = _fixed
+
+
+_patch_repack_launcher_lf()
+
 PIPELINE_NAME = "roi-smdemo-taxi-pipeline"
 MODEL_PACKAGE_GROUP = "roi-smdemo-taxi-models"
 MODEL_NAME = "roi-smdemo-pipeline-model"
@@ -75,10 +124,7 @@ SHAP_BASELINE = [[2.0, 12.0, 12.0, 14, 1, 12.0, 0]]
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     p.add_argument("--start", action="store_true")
     args = p.parse_args()
 
@@ -167,8 +213,12 @@ def main() -> int:
     step_create_model = ModelStep(name="CreateTaxiModel", step_args=model.create(instance_type="ml.m5.large"))
 
     # ---- 7) Model bias (post-training) -----------------------------------
+    # ModelStep ignores the fixed name= and generates its own model name at run
+    # time, so reference the actual created name via the step property (a literal
+    # MODEL_NAME here fails Clarify with "Could not find model ...").
     model_config = ModelConfig(
-        model_name=MODEL_NAME, instance_count=1, instance_type="ml.m5.large",
+        model_name=step_create_model.properties.ModelName,
+        instance_count=1, instance_type="ml.m5.large",
         accept_type="text/csv", content_type="text/csv",
     )
     step_model_bias = ClarifyCheckStep(

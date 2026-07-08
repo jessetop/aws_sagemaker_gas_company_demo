@@ -9,9 +9,9 @@ and tracks trials in managed MLflow (see WALKTHROUGH.md).
 Cost control (Kiro Req 6.4): max_jobs=4, max_parallel_jobs=2, cheapest instance.
 
 Usage:
-    python launch_tuning.py --bucket roi-smdemo-029331796573-us-east-2 \
+    python launch_tuning.py --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2
+        --profile roitraining --region us-east-1
 """
 
 import argparse
@@ -24,13 +24,19 @@ from sagemaker.parameter import ContinuousParameter, IntegerParameter
 from sagemaker.sklearn.estimator import SKLearn
 from sagemaker.tuner import HyperparameterTuner
 
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
+
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     p.add_argument("--instance-type", default="ml.m5.large")
     p.add_argument("--prefix", default="ml/taxi")
     args = p.parse_args()

@@ -13,9 +13,9 @@ Rough cost with defaults below: ~$2-6, ~40-75 min. Unconstrained Autopilot can b
 $20-50+ over several hours — DON'T remove the caps for a class.
 
 Usage:
-    python launch_autopilot.py --bucket roi-smdemo-029331796573-us-east-2 \
+    python launch_autopilot.py --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2          # launch (no wait)
+        --profile roitraining --region us-east-1          # launch (no wait)
     python launch_autopilot.py ... --leaderboard           # print ranking of a done job
 """
 
@@ -32,13 +32,25 @@ from sagemaker.automl.automlv2 import (
     AutoMLDataChannel,
 )
 
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
+
 JOB_NAME = "roi-smdemo-autopilot"
-# Same project tags as the rest of the series, so it shows in Unified Studio too.
-DZ_TAGS = [
-    {"Key": "AmazonDataZoneProject", "Value": "dtas6jh1lcafft"},
-    {"Key": "AmazonDataZoneDomain", "Value": "dzd-3hqzek2hjq1y3t"},
-    {"Key": "AmazonDataZoneEnvironment", "Value": "6076gulsmcou5l"},
-]
+# Tag with the LIVE us-east-1 Unified Studio domain so the job is discoverable
+# there. Project/Environment are optional and only needed to pin it to a specific
+# US project — set SMDEMO_DZ_PROJECT / SMDEMO_DZ_ENVIRONMENT to enable. The job
+# always shows in SageMaker AI Studio's Autopilot view regardless of these tags.
+DZ_TAGS = [{"Key": "AmazonDataZoneDomain", "Value": _os.environ.get("SMDEMO_DZ_DOMAIN", "dzd-b6xs075popdjhj")}]
+if _os.environ.get("SMDEMO_DZ_PROJECT"):
+    DZ_TAGS.append({"Key": "AmazonDataZoneProject", "Value": _os.environ["SMDEMO_DZ_PROJECT"]})
+if _os.environ.get("SMDEMO_DZ_ENVIRONMENT"):
+    DZ_TAGS.append({"Key": "AmazonDataZoneEnvironment", "Value": _os.environ["SMDEMO_DZ_ENVIRONMENT"]})
 
 
 def print_leaderboard(sm, job_name: str) -> None:
@@ -56,10 +68,7 @@ def print_leaderboard(sm, job_name: str) -> None:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     p.add_argument("--sample-rows", type=int, default=15000)
     p.add_argument("--max-candidates", type=int, default=10)
     p.add_argument("--leaderboard", action="store_true", help="just print the ranking")

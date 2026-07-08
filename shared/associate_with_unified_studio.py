@@ -11,13 +11,22 @@ group. Pure tagging — no compute.
 Project (default): admin-project of domain-06-22-2026.
 
 Usage:
-    python associate_with_unified_studio.py --profile roitraining --region us-east-2
+    python associate_with_unified_studio.py --profile roitraining --region us-east-1
 """
 
 import argparse
 import sys
 
 import boto3
+
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
 
 # Project association tags — YOUR project: admin-project of Default_06222026_Domain
 # (read from backing SageMaker domain d-yhfnr1notr3m).
@@ -30,8 +39,7 @@ DZ_TAGS = [
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p, bucket=False, role=False)
     args = p.parse_args()
 
     sess = boto3.Session(profile_name=args.profile, region_name=args.region)

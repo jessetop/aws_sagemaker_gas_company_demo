@@ -17,9 +17,9 @@ cents to ~$0.30). The same transforms also run for free headlessly via the Glue/
 EMR/notebook scripts (shared/taxi_transforms.py) if you don't need the DW engine.
 
 Usage:
-    python run_flow_processing.py --bucket roi-smdemo-029331796573-us-east-2 \
+    python run_flow_processing.py --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-2 --dry-run   # validate, no spend
+        --profile roitraining --region us-east-1 --dry-run   # validate, no spend
     python run_flow_processing.py ... (drop --dry-run to actually run)
 """
 
@@ -32,6 +32,15 @@ import boto3
 import sagemaker
 from sagemaker import image_uris
 from sagemaker.processing import Processor, ProcessingInput, ProcessingOutput
+
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FLOW_FILE = os.path.join(HERE, "taxi.flow")
@@ -47,10 +56,7 @@ def output_node_name(flow_path: str) -> str:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p)
     p.add_argument("--flow", default=FLOW_FILE)
     p.add_argument("--instance-type", default="ml.m5.4xlarge")  # DW default
     p.add_argument("--dry-run", action="store_true", help="validate without running")

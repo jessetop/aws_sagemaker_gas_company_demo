@@ -10,10 +10,10 @@ Both are metadata operations — **no training compute** is launched. Run once t
 make Studio Classic look complete for a class.
 
 Usage:
-    python populate_studio_classic.py --bucket roi-smdemo-029331796573-us-east-2 \
+    python populate_studio_classic.py --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --model-data s3://sagemaker-us-east-2-029331796573/<train-job>/output/model.tar.gz \
-        --profile roitraining --region us-east-2
+        --model-data s3://sagemaker-us-east-1-029331796573/<train-job>/output/model.tar.gz \
+        --profile roitraining --region us-east-1
 """
 
 import argparse
@@ -23,6 +23,15 @@ import boto3
 import sagemaker
 from sagemaker.experiments.run import Run
 from sagemaker.sklearn.model import SKLearnModel
+
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
 
 EXPERIMENT = "roi-smdemo-taxi-experiment"
 MODEL_PACKAGE_GROUP = "roi-smdemo-taxi-models"
@@ -90,11 +99,8 @@ def register_model(args, sm_sess) -> None:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--role-arn", required=True)
+    add_common_args(p)
     p.add_argument("--model-data", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
     args = p.parse_args()
 
     boto_sess = boto3.Session(profile_name=args.profile, region_name=args.region)

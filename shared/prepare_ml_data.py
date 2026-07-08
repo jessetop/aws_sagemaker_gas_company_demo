@@ -15,8 +15,8 @@ project columns and filter. Sampling keeps training fast and cheap while still
 exceeding 100k samples (Kiro Req 1).
 
 Usage:
-    python prepare_ml_data.py --bucket roi-smdemo-029331796573-us-east-2 \
-        --profile roitraining --region us-east-2 --sample 150000
+    python prepare_ml_data.py --bucket roi-smdemo-029331796573-us-east-1 \
+        --profile roitraining --region us-east-1 --sample 150000
 """
 
 import argparse
@@ -28,6 +28,15 @@ import pandas as pd
 import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.fs as fs
+
+# Make the repo root importable so `shared.config` resolves no matter which
+# directory this script is launched from.
+import os as _os, sys as _sys
+_root = _os.path.abspath(_os.path.dirname(__file__))
+while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
+    _root = _os.path.dirname(_root)
+_sys.path.insert(0, _root)
+from shared.config import add_common_args
 
 # Feature columns fed to the model (plus the engineered categoricals we one-hot).
 NUMERIC = [
@@ -45,9 +54,7 @@ TARGET = "high_tip"
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--bucket", required=True)
-    p.add_argument("--profile", default="roitraining")
-    p.add_argument("--region", default="us-east-2")
+    add_common_args(p, role=False)
     p.add_argument("--sample", type=int, default=150_000)
     p.add_argument("--source-prefix", default="processed/emr")
     p.add_argument("--out-prefix", default="ml/taxi")
