@@ -54,6 +54,15 @@ PROFILE = _get("SMDEMO_PROFILE", "roitraining")
 # Bucket follows the <prefix>-<account>-<region> convention unless pinned.
 BUCKET = _get("SMDEMO_BUCKET", f"roi-smdemo-{ACCOUNT}-{REGION}")
 ROLE_ARN = _get("SMDEMO_ROLE_ARN", f"arn:aws:iam::{ACCOUNT}:role/roi-smdemo-exec-role")
+# Prefix for every named resource the demos create. Keeping this in one place is
+# what lets cleanup/ find exactly what the demos made: when the names lived
+# inline in each script, the teardown script drifted and stopped matching.
+PREFIX = _get("SMDEMO_PREFIX", "roi-smdemo-gas")
+
+
+def resource(*parts: str) -> str:
+    """Build a prefixed resource name: resource("features") -> roi-smdemo-gas-features."""
+    return "-".join([PREFIX, *[p for p in parts if p]])
 
 
 def add_common_args(parser, *, profile=True, region=True, bucket=True, role=True):
