@@ -22,6 +22,17 @@ exec_role_name   = "roi-smdemo-exec-role"
 sagemaker_domain_id = ""
 datazone_domain_id  = ""
 
+# ---- Standalone SageMaker AI Studio domain ("old way" experience) ----------
+# Kept ON. The cost model is the reason: a domain AT REST costs only its small,
+# near-empty EFS home volume -- cents a month. Nothing meters until you launch
+# an app (JupyterLab, Canvas) or run a job, both of which are deliberate acts
+# you control. So the domain can sit there between classes costing nothing
+# meaningful, ready for the old-way/new-way comparison.
+#
+# The retention_policy on the domain deletes the EFS volume on teardown, so
+# destroying it does not leave an orphaned volume billing quietly.
+create_sagemaker_ai_domain = true
+
 # ---------------------------------------------------------------- cost guards
 # Read this before touching the numbers below.
 #
@@ -66,7 +77,10 @@ kill_app_types = "Canvas"
 # ---- Budgets + anomaly detection (budget.tf) -------------------------------
 # REQUIRED: set this or no budget, alarm, or anomaly monitor is created at all.
 # These are alarms, not brakes -- the reaper above is the brake.
-budget_notification_email = ""
+#
+# AWS sends a subscription confirmation for the anomaly alerts; the budget
+# notifications start working immediately without any confirmation step.
+budget_notification_email = "jessetoporowski@gmail.com"
 
 daily_budget_usd             = 15 # a forgotten Canvas session trips this in a day
 sagemaker_monthly_budget_usd = 40 # the whole series end-to-end costs a few dollars
