@@ -91,8 +91,6 @@ for e in $(aws sagemaker list-endpoints --profile "$PROFILE" --region "$REGION" 
 done
 
 if $INCLUDE_BUCKET; then
-  # NOTE: the gas and taxi versions of this series share one bucket, so this
-  # removes both. Drop --include-bucket if you still want the taxi data.
   echo "== Emptying + deleting bucket $BUCKET =="
   aws s3 rm "s3://$BUCKET" --recursive --profile "$PROFILE" 2>/dev/null
   aws s3api delete-bucket --bucket "$BUCKET" --profile "$PROFILE" --region "$REGION" 2>/dev/null

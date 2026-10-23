@@ -104,8 +104,6 @@ foreach ($e in ($eps -split "\s+" | Where-Object { $_ })) {
 }
 
 if ($IncludeBucket) {
-    # NOTE: the gas and taxi versions of this series share one bucket, so this
-    # removes both. Drop -IncludeBucket if you still want the taxi data.
     Write-Host "== Emptying + deleting bucket $Bucket =="
     aws s3 rm "s3://$Bucket" --recursive --profile $Profile 2>$null
     aws s3api delete-bucket --bucket $Bucket --profile $Profile --region $Region 2>$null
