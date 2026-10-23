@@ -1,0 +1,4 @@
+# The `train` executable has a shebang and runs in a Linux container — it MUST be
+# LF or Docker fails with "no such file or directory" / bad interpreter.
+train      text eol=lf
+Dockerfile text eol=lf

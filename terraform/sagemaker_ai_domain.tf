@@ -36,6 +36,15 @@ resource "aws_sagemaker_domain" "ai" {
 
   default_user_settings {
     execution_role = data.aws_iam_role.exec.arn
+
+    # Turn Canvas ON for this domain — it's the UI where Autopilot/AutoML jobs
+    # are viewed (AWS moved the Autopilot UI into Canvas in Nov 2023). The Canvas
+    # cost guard (canvas_reaper.tf) watches this domain, so idle apps get reaped.
+    canvas_app_settings {
+      workspace_settings {
+        s3_artifact_path = "s3://${var.data_bucket_name}/canvas/"
+      }
+    }
   }
 
   # Keep teardown easy for a demo (no lingering EFS to clean up by hand).
@@ -51,5 +60,11 @@ resource "aws_sagemaker_user_profile" "ai" {
 
   user_settings {
     execution_role = data.aws_iam_role.exec.arn
+
+    canvas_app_settings {
+      workspace_settings {
+        s3_artifact_path = "s3://${var.data_bucket_name}/canvas/"
+      }
+    }
   }
 }

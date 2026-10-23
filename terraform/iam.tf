@@ -29,6 +29,14 @@ resource "aws_iam_role_policy" "exec_bucket_access" {
   })
 }
 
+# Canvas needs its own managed permissions on the exec role to launch + run
+# AutoML from the Canvas UI (where the Autopilot leaderboard is viewed).
+resource "aws_iam_role_policy_attachment" "exec_canvas" {
+  count      = var.create_sagemaker_ai_domain ? 1 : 0
+  role       = data.aws_iam_role.exec.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerCanvasFullAccess"
+}
+
 # ---- Canvas reaper Lambda execution role -----------------------------------
 resource "aws_iam_role" "canvas_reaper" {
   name = "roi-smdemo-canvas-reaper"
