@@ -139,6 +139,16 @@ def handler(event, context):
                 print(f"[{region}] WARN list_apps failed for {domain_id}: {exc}")
                 errors.append(f"{region}/{domain_id}: list_apps: {exc}")
 
+        # Always say what was inspected, even when the answer is nothing. A cost
+        # guard that logs only when it acts is indistinguishable from a cost
+        # guard that silently is not running, and the whole point of this thing
+        # is to be trusted between classes.
+        watched = [a for a in apps if a.get("AppType") in kill_types]
+        print(
+            f"[{region}] swept {len(domains)} domain(s), {len(apps)} app(s), "
+            f"{len(watched)} of type {sorted(kill_types)}"
+        )
+
         for app in apps:
             app_type = app.get("AppType")
             status = app.get("Status")
