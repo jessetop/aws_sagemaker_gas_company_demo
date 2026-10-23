@@ -1,15 +1,73 @@
-# Live values for account 029331796573. These match the domains created
-# 2026-07-06 in us-east-1. Terraform references the domains; it never creates one.
-profile             = "roitraining"
-region              = "us-east-1"
-account_id          = "029331796573"
-data_bucket_name    = "roi-smdemo-029331796573-us-east-1"
-exec_role_name      = "roi-smdemo-exec-role"
-sagemaker_domain_id = "d-jjtgqqdxjtqe"
-datazone_domain_id  = "dzd-b6xs075popdjhj"
+# Live values for account 029331796573, us-east-1.
+#
+# NOTHING IS DEPLOYED RIGHT NOW. Verified 2026-10-23: the data bucket does not
+# exist in any region, and `list-domains` returns nothing in us-east-1 or
+# us-east-2. The July 2026 teardown removed all of it; only the execution role
+# roi-smdemo-exec-role survived. So this is a from-scratch apply, not an update.
+#
+# Keep name_prefix in step with SMDEMO_PREFIX in ../demo.env, or the cleanup
+# scripts will not find what Terraform created.
 
-# Canvas cost guard
-canvas_reaper_enabled   = true
-canvas_reaper_schedule  = "rate(1 hour)"
+profile          = "roitraining"
+region           = "us-east-1"
+account_id       = "029331796573"
+name_prefix      = "roi-smdemo-gas"
+data_bucket_name = "roi-smdemo-029331796573-us-east-1"
+exec_role_name   = "roi-smdemo-exec-role"
+
+# Left empty deliberately: no SageMaker or Unified Studio domain currently
+# exists. The Canvas reaper discovers domains at runtime and does not need an
+# id. Fill these in only if you create a Unified Studio domain by hand and want
+# it recorded in the Terraform outputs.
+sagemaker_domain_id = ""
+datazone_domain_id  = ""
+
+# ---------------------------------------------------------------- cost guards
+# Read this before touching the numbers below.
+#
+# June 2026 billed $218 for SageMaker. $202 of that was ONE Canvas session left
+# running after class (USE2-Canvas:Session-Hrs, ~$32-64/day). A $50 account
+# budget existed and did not help, because a budget only emails you -- it never
+# stops spend.
+#
+# The reaper is the thing that actually stops it, and it has never been
+# deployed: there is no canvas-reaper Lambda in either region today. Deploying
+# it costs essentially nothing (a 128MB Lambda running hourly sits inside the
+# always-free tier) and it is the single highest-value resource in this file.
+# Apply it BEFORE the parts of the series that can run up a bill.
+
+canvas_reaper_enabled  = true
+canvas_reaper_schedule = "rate(1 hour)"
+
+# Idle threshold. Now measured from DescribeApp's LastUserActivityTimestamp, so
+# an app you are actively demoing is NOT killed. (The previous version read this
+# field off ListApps, where it does not exist, so every Canvas app was deleted
+# 60 minutes after launch regardless of use -- i.e. mid-demo.)
 canvas_max_idle_minutes = 60
-kill_app_types          = "Canvas"
+
+# Hard cap regardless of activity: the backstop for a session left open on a
+# second monitor. 10 hours -- comfortably longer than any teaching block, and
+# it turns a $200 accident into at most a few dollars.
+canvas_max_age_minutes = 600
+
+# Canvas is REGION-SCOPED and the June overrun was in us-east-2 while the guard
+# watched us-east-1. Sweep everywhere you might open Canvas.
+canvas_reaper_regions = "us-east-1,us-east-2"
+
+# Flip to true for one sweep if you change the thresholds and want to see what
+# would be deleted before it is.
+canvas_reaper_dry_run = false
+
+# Canvas only. JupyterLab is excluded on purpose: killing a notebook mid-lesson
+# loses unsaved work, and JupyterLab on t3.medium is cheap (~$2.50 for all of
+# June). Add "JupyterLab" here only if you want the stricter behaviour.
+kill_app_types = "Canvas"
+
+# ---- Budgets + anomaly detection (budget.tf) -------------------------------
+# REQUIRED: set this or no budget, alarm, or anomaly monitor is created at all.
+# These are alarms, not brakes -- the reaper above is the brake.
+budget_notification_email = ""
+
+daily_budget_usd             = 15 # a forgotten Canvas session trips this in a day
+sagemaker_monthly_budget_usd = 40 # the whole series end-to-end costs a few dollars
+anomaly_alert_threshold_usd  = 10

@@ -8,34 +8,40 @@ data "archive_file" "canvas_reaper" {
 resource "aws_lambda_function" "canvas_reaper" {
   count = var.canvas_reaper_enabled ? 1 : 0
 
-  function_name    = "roi-smdemo-canvas-reaper"
+  function_name    = "${var.name_prefix}-canvas-reaper"
   role             = aws_iam_role.canvas_reaper.arn
   runtime          = "python3.12"
   handler          = "canvas_reaper.handler"
   filename         = data.archive_file.canvas_reaper.output_path
   source_code_hash = data.archive_file.canvas_reaper.output_base64sha256
-  timeout          = 60
-  memory_size      = 128
+  # Sweeping several regions and calling DescribeApp per app takes longer than
+  # the single-region list-only version did.
+  timeout     = 180
+  memory_size = 128
 
   environment {
     variables = {
-      WATCH_ALL_DOMAINS       = "true" # covers both the SMUS domain and the AI domain
-      DOMAIN_ID               = var.sagemaker_domain_id
-      KILL_APP_TYPES          = var.kill_app_types
+      WATCH_ALL_DOMAINS = "true" # covers both the SMUS domain and the AI domain
+      DOMAIN_ID         = var.sagemaker_domain_id
+      KILL_APP_TYPES    = var.kill_app_types
+      # Canvas is region-scoped, so the reaper has to be told where to look.
+      REAPER_REGIONS          = var.canvas_reaper_regions
       CANVAS_MAX_IDLE_MINUTES = tostring(var.canvas_max_idle_minutes)
+      CANVAS_MAX_AGE_MINUTES  = tostring(var.canvas_max_age_minutes)
+      DRY_RUN                 = var.canvas_reaper_dry_run ? "true" : "false"
     }
   }
 }
 
 resource "aws_cloudwatch_log_group" "canvas_reaper" {
   count             = var.canvas_reaper_enabled ? 1 : 0
-  name              = "/aws/lambda/roi-smdemo-canvas-reaper"
+  name              = "/aws/lambda/${var.name_prefix}-canvas-reaper"
   retention_in_days = 14
 }
 
 resource "aws_cloudwatch_event_rule" "canvas_reaper" {
   count               = var.canvas_reaper_enabled ? 1 : 0
-  name                = "roi-smdemo-canvas-reaper"
+  name                = "${var.name_prefix}-canvas-reaper"
   description         = "Periodically delete idle SageMaker Canvas apps (cost guard)."
   schedule_expression = var.canvas_reaper_schedule
 }

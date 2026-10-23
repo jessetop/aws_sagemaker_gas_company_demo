@@ -1,6 +1,10 @@
-# In-region (us-east-1) data bucket. The project dataset currently lives in the
-# us-east-2 bucket roi-smdemo-029331796573-us-east-2; a runtime sync copies it
-# here so Feature Store / Clarify / training run in the same region as the domain.
+# In-region data bucket for the whole series: raw/ staged sources, processed/
+# pipeline output, ml/ train-val-test splits, clarify/ reports, canvas/.
+#
+# 00-setup/stage_dataset.py populates raw/ directly from the public sources
+# (NOAA GHCN is itself an S3 bucket, so that part is a server-side copy). There
+# is no cross-region sync step any more -- the previous comment here described
+# copying from a us-east-2 bucket that no longer exists.
 resource "aws_s3_bucket" "data" {
   bucket = var.data_bucket_name
 }

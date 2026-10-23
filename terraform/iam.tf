@@ -6,7 +6,7 @@ data "aws_iam_role" "exec" {
 
 # Grant that role read/write on the new in-region data bucket.
 resource "aws_iam_role_policy" "exec_bucket_access" {
-  name = "roi-smdemo-use1-bucket-access"
+  name = "${var.name_prefix}-bucket-access"
   role = data.aws_iam_role.exec.name
 
   policy = jsonencode({
@@ -39,7 +39,7 @@ resource "aws_iam_role_policy_attachment" "exec_canvas" {
 
 # ---- Canvas reaper Lambda execution role -----------------------------------
 resource "aws_iam_role" "canvas_reaper" {
-  name = "roi-smdemo-canvas-reaper"
+  name = "${var.name_prefix}-canvas-reaper"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -52,7 +52,7 @@ resource "aws_iam_role" "canvas_reaper" {
 }
 
 resource "aws_iam_role_policy" "canvas_reaper" {
-  name = "roi-smdemo-canvas-reaper-policy"
+  name = "${var.name_prefix}-canvas-reaper-policy"
   role = aws_iam_role.canvas_reaper.id
 
   policy = jsonencode({
@@ -75,9 +75,11 @@ resource "aws_iam_role_policy" "canvas_reaper" {
           "sagemaker:DescribeApp",
           "sagemaker:DeleteApp"
         ]
-        # Apps in any domain in this region (there are now two: the SMUS domain
-        # and the standalone SageMaker AI domain).
-        Resource = "arn:aws:sagemaker:${var.region}:${var.account_id}:app/*/*"
+        # Apps in any domain in ANY region. Canvas is region-scoped and the
+        # June 2026 overrun happened in us-east-2 while the guard was scoped to
+        # us-east-1, so the reaper now sweeps several regions (see
+        # var.canvas_reaper_regions) and needs permission in all of them.
+        Resource = "arn:aws:sagemaker:*:${var.account_id}:app/*/*"
       },
       {
         # List ops don't accept a resource ARN; the reaper enumerates domains + apps.
