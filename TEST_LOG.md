@@ -126,6 +126,35 @@ HDD bucket distribution over 10 years of California station-days:
   validated on real Glue rather than locally. Glue runs cost ~$0.31 each, which
   is cheap enough to be the inner loop.
 
+## 2026-10-24 — teardown
+
+| Step | What was tested | Result |
+|---|---|---|
+| Cleanup | `cleanup.ps1` (Glue job, apps, endpoints; derived data) | ✅ Glue job removed; sweep reported the one check it could not run |
+| Teardown | `terraform destroy` | ✅ **19 destroyed**; bucket gone in 2 s despite 423 objects (`force_destroy`) |
+| Verify | `cleanup/verify_teardown.py` across us-east-1 + us-east-2 | ✅ **CLEAN** — nothing billable, and every check ran |
+| Verify | bucket / domains / reaper / Glue jobs / budgets | ✅ all gone; pre-existing account budget untouched |
+| Verify | `roi-smdemo-exec-role` | ✅ survives by design (predates this project; Terraform only references it) |
+
+**Three EMR Serverless applications had survived every previous teardown** and
+were found by the new multi-region sweep:
+
+| region | application | created |
+|---|---|---|
+| us-east-1 | `sm-canvas-data-wrangler-emr-app-roi-smdemo-user` | 2026-07-07 |
+| us-east-2 | `sm-canvas-data-wrangler-emr-app-default-20260622T122252` | 2026-06-22 |
+| us-east-2 | `roi-smdemo-taxi-emr` (STOPPED) | — |
+
+None were billing — no pre-initialised capacity — but they persisted for months
+because the cleanup script only ever ran against one region and matched
+`<prefix>-emr` by exact name. Opening Data Wrangler or Canvas auto-provisions an
+app called `sm-canvas-data-wrangler-emr-app-<user-profile>`, which matching on
+our own prefix can never find. All three are now removed.
+
+Still present and harmless (metadata only, no cost): taxi-era experiments and
+model-package groups in both regions, plus two stray Canvas AutoML experiments.
+Worth clearing before class purely so the console you demo from looks tidy.
+
 ## Not yet run
 
 Modules 2–10 (EMR, Feature Store, training, tuning, Clarify/Debugger/Ground
