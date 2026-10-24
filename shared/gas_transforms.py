@@ -200,12 +200,20 @@ def build_pipeline(
     #
     #      A semi-join against the 3,241-row station list is a broadcast join —
     #      no shuffle at all — and it cuts the data ~20x before the first
-    #      expensive step. Same answer, a fraction of the cost.
+    #      expensive step. Same answer, less work.
     #
-    #      This is the single best "why is my Spark job slow" lesson in the
-    #      series: the transforms are all correct in any order, but the ORDER
-    #      decides whether the job costs cents or dollars. Worth demoing both
-    #      ways once if there is time.
+    #      MEASURED, so the comment does not oversell it: on 10 years of data
+    #      this took the Glue run from 643s/$0.3144 to 597s/$0.2919 — about 7%,
+    #      with byte-identical output. Not the landslide it looks like it should
+    #      be, because the pivot was never the bottleneck: both versions still
+    #      scan all 201M rows off S3, and that I/O dominates.
+    #
+    #      Which makes this the best measurement lesson in the series rather
+    #      than the best optimisation one. The change is right and worth
+    #      keeping; the point to teach is that the obvious fix returned 7%
+    #      because the real cost was elsewhere. Partition pruning — reading
+    #      only the YEAR=/ELEMENT= partitions you actually need — buys far more
+    #      here than anything you do to the shuffle. See TEST_LOG.md.
     obs = obs.join(
         F.broadcast(stations.select("station_id")), on="station_id", how="inner"
     )

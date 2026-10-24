@@ -1,42 +1,133 @@
 # Live Test Log — what was actually run against the account
 
-Account `029331796573`, region `us-east-2`, profile `roitraining`. All resources
-tagged `Project=sagemaker-unified-studio-demos`.
+Account `029331796573`, region **us-east-1**, profile `roitraining`. Resources
+named `roi-smdemo-gas-*` and tagged `Project=sagemaker-unified-studio-demos`.
 
-| Module | What was tested | Result |
+> This log records only what was **executed**, with real numbers. Anything not
+> listed here has not been run. The taxi-era results this file used to contain
+> are in git history on `trunk`; they describe a different dataset in a
+> different region and none of them carry over.
+
+## 2026-10-24 — infrastructure + Module 0 + Module 1
+
+| Step | What was tested | Result |
 |---|---|---|
-| 0 Setup | Stage NYC taxi (parquet + zones) to S3 | ✅ `raw/` populated, 2,964,624 rows verified |
-| 1 Visual ETL (new) | Created + ran Glue 4.0 job from the canvas-equivalent script | ✅ SUCCEEDED, wrote `processed/visual-etl/` |
-| 2 EMR (old) | Created EMR Serverless app, submitted Spark job | ✅ SUCCESS after `TIMESTAMP_NTZ` fix, wrote `processed/emr/` |
-| 1↔2 cross-check | Compared Glue vs EMR outputs | ✅ **identical: 2,858,161 rows, 20 cols** |
-| ML data prep | `prepare_ml_data.py` → train/val/test CSVs | ✅ 150k sampled, 18 features, 76% positive |
-| 4 Training (logic) | Ran `train.py` locally on real splits (free) | ✅ acc=0.766, auc=0.608, model.joblib saved |
-| 4 Training (cloud) | SageMaker `SKLearn` job, `ml.m5.large` | ✅ acc=0.7664, auc=0.6078, **155 billable sec** |
-| 3 Feature Store | Create group + ingest 2k records | ✅ group `roi-smdemo-taxi-features`, offline store on S3 |
-| 5 Tuning | 4-job Bayesian HPO, `max_parallel=2` | ✅ best lr=0.055/depth=5, **auc=0.6073** |
-| 7 Deployment | Serverless endpoint → 3 inferences → delete | ✅ P(high_tip)=0.68/0.70/0.92, endpoint deleted |
-| 6 Clarify | bias + SHAP processing jobs (300-row sample) | ✅ both Completed; `report.html` + `explanations_shap/out.csv` |
+| Terraform | `apply` from scratch (bucket, Studio AI domain, reaper, budgets, anomaly monitor) | ✅ 19 added, 0 changed, 0 destroyed |
+| Canvas reaper | Live `lambda invoke` | ✅ `{"killed": [], "kept": [], "errors": []}` |
+| Canvas reaper | IAM policy simulation for `DeleteApp`/`DescribeApp` in **both** us-east-1 and us-east-2 | ✅ allowed in both |
+| Canvas reaper | EventBridge `rate(1 hour)` trigger | ✅ fired unprompted before any manual invoke |
+| Preflight | `00-setup/preflight.py` | ✅ 6/6 checks pass |
+| 0 Setup | `stage_dataset.py --start-year 2015 --end-year 2024` | ✅ 423 objects / **720 MB**; 419 GHCN Parquet partitions + 4 lookups |
+| 0 Setup | California station parse (fixed-width GHCN) | ✅ **3,241** stations, all within CA lat/lon bounds |
+| 0 Setup | County centroid parse (Census gazetteer) | ✅ **58** counties; all 49 CEC county names join cleanly |
+| 1 Visual ETL | Glue 4.0, 4×G.1X, full `build_pipeline()` + write | ✅ SUCCEEDED, 643 s, 0.7144 DPU-hours (**~$0.31**) |
+| 1 Visual ETL | Re-run with the T2b filter-early change | ✅ SUCCEEDED, 597 s, 0.6633 DPU-hours (**~$0.29**) |
+| 1 Visual ETL | Scale | ✅ **201,486,363** raw worldwide rows → **1,668,673** California station-days |
+| 1 Visual ETL | Output | ✅ 1,440 objects / 69.5 MB across 120 `obs_year`/`obs_month` partitions |
+
+### Filter-early: behaviour-preserving, but only 7% faster
+
+Both runs were compared directly, and the T2b change is **correct**: identical
+output row count (1,668,673), identical HDD-bucket histogram, and the
+heating-season aggregate agreeing to ~13 significant figures (the last digits
+move because float summation order changed).
+
+The speed-up, however, was **643 s → 597 s and $0.3144 → $0.2919 — about 7%**,
+not the large win the change seemed to promise. Moving a 20× data reduction
+ahead of a wide shuffle *should* be dramatic. It wasn't, because the pivot was
+never the bottleneck: both versions still read and scan all 201M rows off S3,
+and that I/O dominates the runtime. The shuffle we optimised away was a small
+share of the total.
+
+**Keep the change** — it is strictly better and it is the right instinct. But
+teach the measurement, not the instinct: the obvious optimisation returned 7%
+because the real cost was somewhere else. "Profile before you optimise" lands
+much harder with your own numbers than as a slogan. The honest follow-up
+question for the room is "so where *did* the time go?", and the answer is S3
+read throughput — which is why partition pruning (reading only the years and
+elements you need) matters far more here than shuffle tuning.
+
+### The result that matters
+
+The dataset exists to show that gas demand tracks heating degree days. It does:
+
+| | mean `total_therms` | mean `hdd65` |
+|---|---|---|
+| outside heating season | 35.1 M | 3.02 |
+| **in** heating season | **49.6 M** | **14.24** |
+
+41% more gas burned against 4.7× the heating degree days. Counties joined
+correctly via nearest centroid (spot-checked Ventura, San Luis Obispo,
+Calaveras, Merced, Napa against station coordinates).
+
+HDD bucket distribution over 10 years of California station-days:
+
+| bucket | rows |
+|---|---|
+| none | 680,573 |
+| moderate | 474,160 |
+| mild | 424,407 |
+| cold | 83,684 |
+| severe | 5,849 |
 
 ### Bugs found & fixed while testing (good teaching material)
-1. **TIMESTAMP_NTZ** cast — EMR Spark 3.5 vs Glue 3.3 (fixed: `unix_timestamp()`).
-2. **get_dummies → bool** — Feature Store rejects bool dtype + breaks CSV inference
-   (fixed: cast one-hot cols to int in `prepare_ml_data.py`).
-3. **Feature name regex** — `pickup_borough_N/A`/`Staten Island` had `/` and space
-   (fixed: sanitize names in `feature_store_ingest.py`).
-4. **Offline store ACL** — role needed `s3:GetBucketAcl`/`PutObjectAcl` (added).
-5. **Inference 1D array** — container parses a CSV row to 1D; `predict_proba`
-   needs 2D (fixed: reshape in `predict_fn`).
-6. **Clarify output `//`** — trailing slash produced an illegal `clarify//` key
-   (fixed: drop trailing slash).
-7. **Clarify SHAP cost** — running on the full 22.5k-row test set × 100 samples is
-   millions of inferences via a shadow endpoint (slow/costly). Fixed: `--analysis-rows`
-   default 300. Lesson: SHAP cost scales with rows × samples; sample for demos.
+
+1. **`ListApps` has no `LastUserActivityTimestamp`.** The Canvas reaper read
+   that field off the `ListApps` response, where it does not exist — it is only
+   on `DescribeApp`. Every app therefore fell back to `CreationTime` and would
+   be deleted 60 minutes after launch regardless of use, i.e. **mid-demo**.
+   Fixed with a per-app `DescribeApp`.
+2. **The Canvas reaper swept one region.** Canvas is region-scoped and the June
+   2026 overrun was in us-east-2 while the guard watched us-east-1 — the same
+   wrong-region failure as the teardown script. Now sweeps a configurable list.
+3. **The teardown script targeted the wrong region.** `cleanup.ps1` defaulted
+   to us-east-2 and hardcoded the us-east-2 bucket after the series moved to
+   us-east-1, so it deleted nothing while printing "Cleanup complete". Both
+   cleanup scripts now read `demo.env` and end with a verification sweep.
+4. **The pipeline shuffled the world to keep 5% of it.** `build_pipeline()` ran
+   the T7 pivot (a wide shuffle) over all 201M global rows and only joined the
+   California station dimension afterwards. Added T2b: a broadcast semi-join
+   against the 3,241-station list *before* the shuffle. Every transform was
+   correct in any order — only the **order** decided the cost. This is the best
+   "why is my Spark job slow" lesson in the series.
+5. **`terraform destroy` would fail on a non-empty bucket.** With 720 MB staged,
+   teardown became empty-by-hand → destroy → reconcile stale state. Set
+   `force_destroy`, which is safe here because every object is rebuildable from
+   public sources in minutes.
+6. **GHCN units and types are traps on purpose.** `DATE` is the string
+   `"20240115"` (parsed with an explicit format, since a silent cast returns
+   NULL under Spark's CORRECTED parser and would delete rows), and
+   `DATA_VALUE` is an integer in **tenths** of a degree C — forgetting that
+   gives a plausible but 10× wrong answer.
+7. **CEC's `COUNTY_NUM` is not a FIPS code.** It is an alphabetical index
+   (Alameda=1, Alpine=2, Amador=3) while Census FIPS runs 001, 003, 005. Joining
+   on it would silently mis-assign nearly every county. We join on the
+   normalised county **name** instead.
+8. **CEC ships ~3 rows per county-month-sector** and pads its name fields with
+   trailing whitespace. Summing is mandatory; assuming one row per group
+   undercounts demand roughly 3×.
 
 ## Notes / honest caveats
-- **AUC ≈ 0.61**: tip% is genuinely weakly predictable from trip features; the
-  point is the *workflow*, not model quality. Good teaching honesty.
-- **TIMESTAMP_NTZ**: identical PySpark failed on EMR Spark 3.5 but passed on Glue
-  Spark 3.3 — fixed with `unix_timestamp()`. Captured as a teaching moment.
-- **Local SDK install**: the `sagemaker` SDK hits a Windows MAX_PATH error in the
-  store-Python; install it in a short-path venv (`C:\smv`) instead. Not relevant
-  to the demos themselves (they run in SageMaker), only to local driving.
+
+- **Group structure in the label.** CEC consumption is monthly, so every daily
+  row in a county-month shares one `high_demand` value. Splits must be by
+  county-month, not random, or the score is inflated. This is the gas series'
+  equivalent of the taxi series' cash-tip leak, and a better lesson.
+- **Many GHCN stations are precipitation-only.** T8 requires both `TMAX` and
+  `TMIN`, which is why 3,241 stations over 10 years yield 1.67M usable
+  station-days rather than ~7M. Still far above the 100k-sample requirement.
+- **Small-files on the output.** 1,440 files across 120 partitions averages
+  ~48 KB each, because the default 200 shuffle partitions spread across 120
+  output partitions. A `repartition("obs_year", "obs_month")` before the write
+  would give one file per partition. Not yet done — it costs another Glue run
+  to verify.
+- **Local PySpark does not work on the authoring machine** (32-bit JRE, and
+  Hadoop's Windows `winutils` shim is 64-bit only), so the transforms are
+  validated on real Glue rather than locally. Glue runs cost ~$0.31 each, which
+  is cheap enough to be the inner loop.
+
+## Not yet run
+
+Modules 2–10 (EMR, Feature Store, training, tuning, Clarify/Debugger/Ground
+Truth, deployment, pipelines, Autopilot, custom container) still carry the taxi
+schema and have **not** been ported or executed against the gas dataset.
