@@ -190,6 +190,26 @@ def build_pipeline(
     #     "Drop Null Fields" / Filter node.)
     obs = obs.dropna(subset=["station_id", "obs_date_raw", "value_tenths"])
 
+    # T2b. FILTER TO CALIFORNIA BEFORE ANYTHING EXPENSIVE.
+    #
+    #      GHCN is a global dataset: ten years of three elements is on the order
+    #      of 200 million rows, and California is about 5% of that. The pivot in
+    #      T7 is a wide shuffle, so doing it first and joining the station
+    #      dimension afterwards would shuffle 200M rows in order to discard 190M
+    #      of them.
+    #
+    #      A semi-join against the 3,241-row station list is a broadcast join —
+    #      no shuffle at all — and it cuts the data ~20x before the first
+    #      expensive step. Same answer, a fraction of the cost.
+    #
+    #      This is the single best "why is my Spark job slow" lesson in the
+    #      series: the transforms are all correct in any order, but the ORDER
+    #      decides whether the job costs cents or dollars. Worth demoing both
+    #      ways once if there is time.
+    obs = obs.join(
+        F.broadcast(stations.select("station_id")), on="station_id", how="inner"
+    )
+
     # T3. Parse the date. GHCN stores it as the STRING "20240115", so this is a
     #     real parse, not a cast.
     #     NOTE: we pass an explicit format to to_date() rather than relying on
@@ -290,20 +310,27 @@ def build_pipeline(
     # T15. JOIN the station dimension, which is itself enriched with its nearest
     #      county — so this is a join of a join. This is the headline "join two
     #      datasets" step every tool demonstrates.
+    #
+    #      Note this join is pure ENRICHMENT, not filtering: T2b already
+    #      restricted the data to California stations. It is still an inner join
+    #      so that a station present in the observations but missing from the
+    #      dimension cannot silently produce null counties downstream.
     station_counties = _nearest_county(stations, counties)
     enriched = daily.join(
-        station_counties.select(
-            "station_id",
-            "station_name",
-            "elevation_m",
-            "latitude",
-            "longitude",
-            "county_fips",
-            "county_name",
-            "county_key",
+        F.broadcast(
+            station_counties.select(
+                "station_id",
+                "station_name",
+                "elevation_m",
+                "latitude",
+                "longitude",
+                "county_fips",
+                "county_name",
+                "county_key",
+            )
         ),
         on="station_id",
-        how="inner",  # inner: drops non-California stations in one step
+        how="inner",
     )
 
     # T16. JOIN the CEC consumption table on county + year + month to attach the
