@@ -1,9 +1,13 @@
 # Tear down all resources created by the SageMaker Unified Studio demo series.
 # Safe to re-run. Only touches resources named/tagged for this demo.
 #
-#   pwsh cleanup/cleanup.ps1                 # delete jobs/apps/endpoints, keep bucket+role
-#   pwsh cleanup/cleanup.ps1 -IncludeBucket  # also empty + delete the S3 bucket
-#   pwsh cleanup/cleanup.ps1 -IncludeRole    # also delete the shared IAM role
+#   powershell -File cleanup/cleanup.ps1                 # jobs/apps/endpoints, keep bucket+role
+#   powershell -File cleanup/cleanup.ps1 -IncludeBucket  # also empty + delete the S3 bucket
+#   powershell -File cleanup/cleanup.ps1 -IncludeRole    # also delete the shared IAM role
+#
+# Invoked as `powershell`, not `pwsh`: PowerShell 7 is not installed on the
+# authoring machine, and `pwsh cleanup/cleanup.ps1` -- what this header used to
+# say -- fails with CommandNotFoundException.
 #
 # Account, region, bucket and the resource-name prefix are read from demo.env so
 # this script can never drift away from what the demos actually created. That
@@ -87,12 +91,24 @@ aws sagemaker delete-mlflow-tracking-server --tracking-server-name "$Prefix-mlfl
 aws scheduler delete-schedule --name "$Prefix-mlflow-teardown" --profile $Profile --region $Region 2>$null
 
 Write-Host "== Stopping + deleting EMR Serverless applications =="
+# Match BOTH the app this series creates by name AND the ones SageMaker creates
+# on our behalf. Opening Data Wrangler / Canvas in a domain auto-provisions an
+# EMR Serverless app called "sm-canvas-data-wrangler-emr-app-<user-profile>",
+# which no amount of matching on our own prefix will ever find. A July 2026 one
+# survived that teardown for exactly this reason and was still there in October.
 $apps = aws emr-serverless list-applications --profile $Profile --region $Region `
-    --query "applications[?name=='$Prefix-emr'].id" --output text
-foreach ($a in ($apps -split "\s+" | Where-Object { $_ })) {
-    aws emr-serverless stop-application --application-id $a --profile $Profile --region $Region 2>$null
-    aws emr-serverless delete-application --application-id $a --profile $Profile --region $Region 2>$null
-    Write-Host "  deleted app $a"
+    --query "applications[?state!='TERMINATED'].[id,name]" --output text
+foreach ($line in ($apps -split "`n" | Where-Object { $_.Trim() })) {
+    $parts = $line.Trim() -split "\s+"
+    $id = $parts[0]
+    $name = $parts[1]
+    if ($name -notlike "$Prefix*" -and $name -notlike "sm-canvas-*") {
+        Write-Host "  skipping unrelated app $name ($id)"
+        continue
+    }
+    aws emr-serverless stop-application --application-id $id --profile $Profile --region $Region 2>$null
+    aws emr-serverless delete-application --application-id $id --profile $Profile --region $Region 2>$null
+    Write-Host "  deleted app $name ($id)"
 }
 
 Write-Host "== Deleting SageMaker endpoints for this demo (modules 3-7) =="
@@ -105,13 +121,13 @@ foreach ($e in ($eps -split "\s+" | Where-Object { $_ })) {
 
 if ($IncludeBucket) {
     Write-Host "== Emptying + deleting bucket $Bucket =="
-    aws s3 rm "s3://$Bucket" --recursive --profile $Profile 2>$null
+    aws s3 rm "s3://$Bucket" --recursive --only-show-errors --profile $Profile
     aws s3api delete-bucket --bucket $Bucket --profile $Profile --region $Region 2>$null
 } else {
     Write-Host "== Keeping bucket (use -IncludeBucket to delete). Clearing derived data only =="
-    aws s3 rm "s3://$Bucket/processed/" --recursive --profile $Profile 2>$null
-    aws s3 rm "s3://$Bucket/tmp/" --recursive --profile $Profile 2>$null
-    aws s3 rm "s3://$Bucket/logs/" --recursive --profile $Profile 2>$null
+    aws s3 rm "s3://$Bucket/processed/" --recursive --only-show-errors --profile $Profile
+    aws s3 rm "s3://$Bucket/tmp/" --recursive --only-show-errors --profile $Profile
+    aws s3 rm "s3://$Bucket/logs/" --recursive --only-show-errors --profile $Profile
 }
 
 if ($IncludeRole) {
@@ -128,29 +144,59 @@ if ($IncludeRole) {
 Write-Host ""
 Write-Host "== Verifying: anything still billable in $Region ? ==" -ForegroundColor Cyan
 $leftover = @()
+$unchecked = @()
 
-$eps = aws sagemaker list-endpoints --profile $Profile --region $Region `
-    --query "Endpoints[].EndpointName" --output text 2>$null
-foreach ($e in ($eps -split "\s+" | Where-Object { $_ })) { $leftover += "endpoint: $e" }
+# Run one check. If the installed AWS CLI does not support the operation, say so
+# LOUDLY instead of swallowing it: a check that silently cannot run looks
+# identical to a check that passed, which is the exact failure this sweep exists
+# to prevent. (Real example: aws-cli 2.15 has no
+# `sagemaker list-mlflow-tracking-servers`, so that check was dead code -- an
+# MLflow tracking server costs real money and would never have been reported.)
+function Invoke-Check {
+    param([string]$Label, [string[]]$CliArgs)
+    $out = & aws @CliArgs 2>&1
+    $text = ($out | Out-String)
+    if ($LASTEXITCODE -ne 0) {
+        if ($text -match "Invalid choice|argument operation") {
+            $script:unchecked += "$Label (this aws-cli does not support it - upgrade the CLI)"
+        } else {
+            $script:unchecked += "$Label (check failed: $($text.Trim() -split "`n" | Select-Object -First 1))"
+        }
+        return @()
+    }
+    return ($text -split "`n" | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim() })
+}
 
-$apps = aws emr-serverless list-applications --profile $Profile --region $Region `
-    --query "applications[?state!='TERMINATED'].[name,state]" --output text 2>$null
-foreach ($a in ($apps -split "\n" | Where-Object { $_.Trim() })) { $leftover += "emr-serverless: $($a.Trim())" }
-
-$mlf = aws sagemaker list-mlflow-tracking-servers --profile $Profile --region $Region `
-    --query "TrackingServerSummaries[].TrackingServerName" --output text 2>$null
-foreach ($m in ($mlf -split "\s+" | Where-Object { $_ })) { $leftover += "mlflow-server: $m" }
-
+foreach ($e in Invoke-Check "endpoints" @("sagemaker", "list-endpoints", "--profile", $Profile, "--region", $Region, "--query", "Endpoints[].EndpointName", "--output", "text")) {
+    $leftover += "endpoint: $e"
+}
+foreach ($a in Invoke-Check "emr-serverless applications" @("emr-serverless", "list-applications", "--profile", $Profile, "--region", $Region, "--query", "applications[?state!='TERMINATED'].[name,state]", "--output", "text")) {
+    $leftover += "emr-serverless: $a"
+}
+foreach ($m in Invoke-Check "mlflow tracking servers" @("sagemaker", "list-mlflow-tracking-servers", "--profile", $Profile, "--region", $Region, "--query", "TrackingServerSummaries[].TrackingServerName", "--output", "text")) {
+    $leftover += "mlflow-server: $m"
+}
 # Studio / Unified Studio spaces are the classic overnight bill.
-$apps2 = aws sagemaker list-apps --profile $Profile --region $Region `
-    --query "Apps[?Status=='InService'].[AppName,AppType]" --output text 2>$null
-foreach ($a in ($apps2 -split "\n" | Where-Object { $_.Trim() })) { $leftover += "studio app InService: $($a.Trim())" }
+foreach ($a in Invoke-Check "studio apps" @("sagemaker", "list-apps", "--profile", $Profile, "--region", $Region, "--query", "Apps[?Status=='InService'].[AppName,AppType]", "--output", "text")) {
+    $leftover += "studio app InService: $a"
+}
+
+if ($unchecked.Count -gt 0) {
+    Write-Host "COULD NOT CHECK - verify these by hand:" -ForegroundColor Yellow
+    $unchecked | ForEach-Object { Write-Host "   ? $_" -ForegroundColor Yellow }
+    Write-Host ""
+}
 
 if ($leftover.Count -gt 0) {
-    Write-Host "STILL RUNNING - these bill until removed:" -ForegroundColor Yellow
+    Write-Host "STILL PRESENT - these can bill until removed:" -ForegroundColor Yellow
     $leftover | ForEach-Object { Write-Host "   ! $_" -ForegroundColor Yellow }
     Write-Host ""
     Write-Host "Cleanup finished with leftovers (see above)." -ForegroundColor Yellow
+    exit 1
+}
+
+if ($unchecked.Count -gt 0) {
+    Write-Host "Cleanup complete, but some checks could not run (see above)." -ForegroundColor Yellow
     exit 1
 }
 

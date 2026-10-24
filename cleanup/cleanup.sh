@@ -92,12 +92,12 @@ done
 
 if $INCLUDE_BUCKET; then
   echo "== Emptying + deleting bucket $BUCKET =="
-  aws s3 rm "s3://$BUCKET" --recursive --profile "$PROFILE" 2>/dev/null
+  aws s3 rm "s3://$BUCKET" --recursive --only-show-errors --profile "$PROFILE"
   aws s3api delete-bucket --bucket "$BUCKET" --profile "$PROFILE" --region "$REGION" 2>/dev/null
 else
   echo "== Keeping bucket; clearing derived data only =="
   for p in processed tmp logs; do
-    aws s3 rm "s3://$BUCKET/$p/" --recursive --profile "$PROFILE" 2>/dev/null
+    aws s3 rm "s3://$BUCKET/$p/" --recursive --only-show-errors --profile "$PROFILE"
   done
 fi
 
