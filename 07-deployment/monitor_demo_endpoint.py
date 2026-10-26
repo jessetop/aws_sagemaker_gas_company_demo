@@ -1,5 +1,5 @@
 """
-Module 7 (demo) — stand up a REAL-TIME taxi endpoint with Data Capture enabled so
+Module 7 (demo) — stand up a REAL-TIME gas-demand endpoint with Data Capture enabled so
 the class can demo SageMaker Model Monitor, and attach a Model Card.
 
 Why real-time (not the serverless endpoint in deploy_and_infer.py)?
@@ -41,20 +41,46 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args, ACCOUNT, REGION, BUCKET, ROLE_ARN
 
 # --- fixed demo resources (account/region/bucket come from shared.config) ---
 # NOTE: TRAIN_JOB names a specific past training job; MODEL_DATA follows the
 # configured region but the artifact only exists once module 4 has trained there.
-TRAIN_JOB = "roi-smdemo-taxi-train-2026-06-22-19-48-43-017"
-MODEL_DATA = (
-    f"s3://sagemaker-{REGION}-{ACCOUNT}/{TRAIN_JOB}/output/model.tar.gz"
-)
-PREFIX = "ml/taxi"
+# Resolved at runtime by resolve_training_job(): hardcoding a job name meant
+# this script broke the moment the referenced job aged out of the account.
+TRAIN_JOB = None
+MODEL_DATA = None
 
-MODEL_NAME = "roi-smdemo-taxi-model-mon"
-ENDPOINT_NAME = "roi-smdemo-taxi-monitor"
-CARD_NAME = "roi-smdemo-taxi-tip-classifier"
+
+def resolve_training_job(sm_client) -> None:
+    """Point TRAIN_JOB / MODEL_DATA at the newest Completed training job.
+
+    No MaxResults alongside NameContains: SageMaker applies the limit to the
+    page it fetches BEFORE the name filter, so MaxResults=1 silently returns
+    nothing once an HPO trial is the newest job in the account.
+    """
+    global TRAIN_JOB, MODEL_DATA
+    jobs = sm_client.list_training_jobs(
+        NameContains=config.resource("train"), StatusEquals="Completed",
+        SortBy="CreationTime", SortOrder="Descending",
+    )["TrainingJobSummaries"]
+    if not jobs:
+        raise SystemExit(
+            f"no Completed training job matching {config.resource('train')}. "
+            f"Run 04-training/launch_training.py first."
+        )
+    TRAIN_JOB = jobs[0]["TrainingJobName"]
+    MODEL_DATA = sm_client.describe_training_job(
+        TrainingJobName=TRAIN_JOB
+    )["ModelArtifacts"]["S3ModelArtifacts"]
+    print(f"using training job {TRAIN_JOB}")
+    print(f"           artifact {MODEL_DATA}")
+PREFIX = "ml/gas"
+
+MODEL_NAME = config.resource("model-mon")
+ENDPOINT_NAME = config.resource("monitor")
+CARD_NAME = config.resource("demand-classifier")
 
 
 def _final_metrics(sm_client) -> dict:
@@ -77,9 +103,10 @@ def _make_card(sm_client, metrics: dict) -> None:
         "model_overview": {
             "model_name": MODEL_NAME,
             "model_description": (
-                "Binary classifier predicting whether a NYC yellow-taxi trip will "
+                "Binary classifier predicting whether a California county-month was a "
                 "result in a high tip (>20% of fare). Gradient-boosted trees "
-                "(scikit-learn) trained on engineered trip features."
+                "high gas-demand month, from station weather. GradientBoosting "
+                "(scikit-learn) trained on engineered weather features."
             ),
             "problem_type": "Binary classification",
             "algorithm_type": "Gradient boosting (scikit-learn GradientBoostingClassifier)",
@@ -97,7 +124,7 @@ def _make_card(sm_client, metrics: dict) -> None:
                 "card, and Model Monitor walkthroughs."
             ),
             "factors_affecting_model_efficiency": (
-                "Sensitive to time-of-day, pickup/dropoff zone, trip distance, and "
+                "Sensitive to heating degree days, month, station elevation and "
                 "passenger count. Trained on a single month of NYC TLC data; not "
                 "representative of other cities or seasons."
             ),
@@ -113,7 +140,7 @@ def _make_card(sm_client, metrics: dict) -> None:
             },
             "training_observations": (
                 "Trained with learning-rate=0.1, n-estimators=150, max-depth=3 on the "
-                "engineered taxi feature set; validation AUC/accuracy below."
+                "engineered weather feature set; validation AUC/accuracy below."
             ),
             "training_job_details": {
                 "training_arn": (
@@ -195,6 +222,11 @@ def main() -> int:
 
     sm_sess = sagemaker.Session(boto_session=boto_sess)
     sm_client = boto_sess.client("sagemaker")
+
+    # Find the model artifact before anything else: this used to be a hardcoded
+    # June training job name, so the script broke silently once that job aged
+    # out of the account.
+    resolve_training_job(sm_client)
 
     # Idempotent: clear anything a previous run left behind.
     _delete(boto_sess)

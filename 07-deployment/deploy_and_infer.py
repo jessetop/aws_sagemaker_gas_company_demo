@@ -38,14 +38,42 @@ from shared import config
 from shared.config import add_common_args
 
 
+def newest_model_artifact(sm) -> str:
+    """S3 artifact of the newest Completed training job for this series.
+
+    No MaxResults alongside NameContains: SageMaker applies the limit to the
+    page it fetches BEFORE the name filter, so MaxResults=1 silently returns
+    nothing once an HPO trial is the newest job in the account.
+    """
+    jobs = sm.list_training_jobs(
+        NameContains=config.resource("train"), StatusEquals="Completed",
+        SortBy="CreationTime", SortOrder="Descending",
+    )["TrainingJobSummaries"]
+    if not jobs:
+        raise SystemExit(
+            f"no Completed training job matching {config.resource('train')}. "
+            f"Run 04-training/launch_training.py first."
+        )
+    job = jobs[0]["TrainingJobName"]
+    uri = sm.describe_training_job(TrainingJobName=job)["ModelArtifacts"]["S3ModelArtifacts"]
+    print(f"using artifact from {job}")
+    return uri
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--model-data", required=True, help="s3:// path to model.tar.gz")
+    p.add_argument("--model-data", default=None,
+                   help="s3:// path to model.tar.gz "
+                        "(default: newest Completed training job)")
     add_common_args(p)
     p.add_argument("--prefix", default="ml/gas")
     args = p.parse_args()
 
     boto_sess = boto3.Session(profile_name=args.profile, region_name=args.region)
+
+    if not args.model_data:
+
+        args.model_data = newest_model_artifact(boto_sess.client("sagemaker"))
     sm_sess = sagemaker.Session(boto_session=boto_sess)
 
     # Idempotent: drop a model / endpoint-config left by a previous run.
