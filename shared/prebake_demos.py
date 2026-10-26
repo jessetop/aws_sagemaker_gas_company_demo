@@ -94,9 +94,18 @@ STEPS = [
         "feeds": "Demo: Experiments compare, HPO",
     },
     {
+        "key": "model",
+        "title": "SageMaker Model object (free; Clarify needs it)",
+        "cmd": ["shared/create_model.py"],
+        "mins": 1,
+        "cost": "free (metadata only)",
+        "feeds": "Demo: Clarify, Training (Models panel)",
+    },
+    {
         "key": "clarify",
         "title": "Clarify bias + SHAP reports",
-        "cmd": ["06-clarify-debugger-groundtruth/clarify_bias_explainability.py"],
+        "cmd": ["06-clarify-debugger-groundtruth/clarify_bias_explainability.py",
+                "--model-name", config.resource("model")],
         "mins": 12,
         "cost": "~$0.50",
         "feeds": "Demo: Clarify",
@@ -130,20 +139,30 @@ def probe(session, bucket: str) -> dict:
         state["features"] = None
 
     try:
+        # No MaxResults: SageMaker applies it to the page it fetches BEFORE
+        # NameContains filters it, so MaxResults=1 returns zero as soon as the
+        # newest training job in the account is an HPO trial rather than ours.
         jobs = sm.list_training_jobs(
-            NameContains=config.resource("train"), StatusEquals="Completed", MaxResults=1
+            NameContains=config.resource("train"), StatusEquals="Completed"
         )["TrainingJobSummaries"]
         state["training"] = len(jobs) > 0
     except Exception:
         state["training"] = None
 
     try:
+        # Same MaxResults-before-filter trap as above.
         tun = sm.list_hyper_parameter_tuning_jobs(
-            NameContains=config.resource("hpo"), MaxResults=1
+            NameContains=config.resource("hpo")
         )["HyperParameterTuningJobSummaries"]
         state["tuning"] = len(tun) > 0
     except Exception:
         state["tuning"] = None
+
+    try:
+        sm.describe_model(ModelName=config.resource("model"))
+        state["model"] = True
+    except Exception:
+        state["model"] = False
 
     try:
         state["clarify"] = _s3_has("clarify/")

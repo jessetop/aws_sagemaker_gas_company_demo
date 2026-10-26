@@ -347,13 +347,34 @@ Check before you commit to a demo in a running class.
 | 2 | Data Wrangler | ⚠️ flow is a stub | ✅ data | ⚠️ live-build only |
 | 3 | Spark on EMR | ❌ not ported | ✅ data | ❌ |
 | 4 | SageMaker Processing | ⚠️ partial | ✅ splits | ⚠️ talk-through |
-| 5 | Feature Store | ✅ | see `--status` | check |
+| 5 | Feature Store | ✅ verified | ✅ `roi-smdemo-gas-features` | ✅ |
 | 6 | Training | ✅ verified | ✅ | ✅ |
-| 7 | Experiments + metric arc | ✅ verified | needs `tuning` | check |
-| 8 | HPO | ✅ ported | see `--status` | check |
+| 7 | Experiments + metric arc | ✅ verified | ✅ baseline + 4 HPO trials | ✅ |
+| 8 | HPO | ✅ verified | ✅ `roi-smdemo-gas-hpo-261026-1514` | ✅ |
 | 9 | Clarify | ✅ ported | see `--status` | check |
 | 10 | Deployment | ✅ ported | live | ⚠️ run once first |
 | 11 | Autopilot | ✅ ported | not baked | ❌ |
+
+### Two AWS API traps the prebaker had to work around
+
+Both produce *silently wrong* answers rather than errors, and both would send
+you into a class mistrusting a correct `--status`.
+
+1. **`MaxResults` is applied before `NameContains`.** This returns zero:
+   ```
+   list_training_jobs(NameContains="roi-smdemo-gas-train",
+                      StatusEquals="Completed", MaxResults=1)   -> 0 results
+   list_training_jobs(NameContains="roi-smdemo-gas-train",
+                      StatusEquals="Completed")                 -> 1 result
+   ```
+   SageMaker fetches one job, *then* filters it. The moment an HPO trial became
+   the newest job in the account, `--status` started reporting the training job
+   as missing when it was sitting right there. Never combine `MaxResults` with a
+   name filter — filter, then sort.
+
+2. **`--max-items` appends a pagination token to `--output text`** (AWS CLI).
+   A query for one timestamp returns the value, then `None` on its own line.
+   Use the API's own `--limit` and strip to digits.
 
 ### Backlog, in the order I'd do it
 
