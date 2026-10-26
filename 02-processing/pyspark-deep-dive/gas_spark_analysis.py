@@ -251,14 +251,59 @@ print("heating sensitivity by county (therms per degree-day):")
     .show(12, truncate=False)
 )
 
-overall = monthly.stat.corr("avg_hdd", "therms")
-print(f"\nstatewide correlation between HDD and therms: {overall:.4f}")
 print("One aggregation. No UDF, no collect, no Python loop -- the arithmetic")
 print("is pushed down and every county is fitted in parallel.")
 
 
 # ===========================================================================
-banner(7, "Same question in SQL, because half your room thinks in SQL")
+banner(7, "SIMPSON'S PARADOX, live: the same data says opposite things")
+# ===========================================================================
+# Every county above correlates 0.83-0.91 between degree-days and therms. Cold
+# weather drives gas demand, hard and consistently.
+#
+# Now pool the counties together and compute one correlation over all of it.
+within = sens.agg(F.avg("corr")).first()[0]
+pooled = monthly.stat.corr("avg_hdd", "therms")
+print(f"average WITHIN-county correlation : {within:+.4f}")
+print(f"POOLED correlation, all counties  : {pooled:+.4f}")
+print()
+print("Same rows. Same columns. Opposite conclusions.")
+print()
+print("The pooled number is ~0 because county SIZE swamps the weather signal:")
+print("Los Angeles burns more gas in a mild month than Alpine does in a freezing")
+print("one, so the between-county variation drowns the within-county effect.")
+print("Aggregate at the wrong grain and you will confidently report that")
+print("temperature does not affect gas demand.")
+print()
+print("This is why the ML label is ranked WITHIN county rather than globally")
+print("(see shared/prepare_ml_data.py) -- a global threshold would just")
+print("rediscover which counties are big.")
+
+# Show the mechanism rather than asserting it: county means are orders of
+# magnitude apart, which is the whole reason pooling destroys the signal.
+print("\nmonthly therms by county -- the spread that causes it:")
+(
+    monthly.groupBy("county_name")
+    .agg(
+        F.avg("therms").alias("avg_therms"),
+        F.avg("avg_hdd").alias("avg_hdd"),
+    )
+    .orderBy(F.col("avg_therms").desc())
+    .show(5, truncate=False)
+)
+(
+    monthly.groupBy("county_name")
+    .agg(
+        F.avg("therms").alias("avg_therms"),
+        F.avg("avg_hdd").alias("avg_hdd"),
+    )
+    .orderBy("avg_therms")
+    .show(5, truncate=False)
+)
+
+
+# ===========================================================================
+banner(8, "Same question in SQL, because half your room thinks in SQL")
 # ===========================================================================
 proc.createOrReplaceTempView("gas")
 spark.sql(
