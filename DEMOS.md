@@ -125,23 +125,54 @@ backstop, not an excuse.
 
 ---
 
-## Demo 3 — Spark on EMR (5 min)
+## Demo 3 — PySpark, serverless (5 min)
 
 **Slot:** Module 2, after Data Wrangler.
 **Baked:** `data`.
-**Status:** ⚠️ not yet ported to gas data — see the backlog at the bottom.
+**Runs on:** Glue Interactive Sessions — **no EMR cluster**, ~$0.07 for a
+5-minute demo, per-second billing, nothing to tear down.
 
-**Here's how you make it:** Studio notebook → connect to an EMR cluster →
-SparkMagic kernel → `%%spark` and read the same S3 path.
+Full detail: [`02-processing/pyspark-deep-dive/README.md`](02-processing/pyspark-deep-dive/README.md)
 
-**The point to make:** *"Same data, same transforms, same answer. The only thing
-that changed is where the Spark ran. Data Wrangler for exploring; EMR when you
-have two hundred million rows and someone else's cluster."*
+**Why not EMR:** the AWS lab already does "here's how you connect Studio to an
+EMR cluster and it runs some stuff." Repeating that teaches nothing extra and
+risks leaving a cluster running. So this demo is about the **DataFrame work**,
+which is the part the labs skip — and the Spark engine is identical either way.
 
-**Here's one I made earlier:** the processed output again — *"identical to what
-Data Wrangler produced, because it's the same logic."*
+First cell, every time:
 
----
+```python
+%idle_timeout 15
+%glue_version 4.0
+%worker_type G.1X
+%number_of_workers 4
+```
+
+`%idle_timeout 15` is the line that stops this becoming another Canvas story.
+The Canvas reaper does **not** catch Glue sessions — it only reaps SageMaker
+apps.
+
+**Do three of the seven sections. These three:**
+
+1. **Partition pruning** (60s). Filter on `YEAR`/`ELEMENT`, show the explain
+   plan. `PartitionFilters` means those directories were never opened;
+   `PushedFilters` would mean it read everything anyway. Proving it beats
+   claiming it.
+2. **Broadcast vs shuffle** (90s). Same join, two plans side by side.
+   `BroadcastHashJoin` ships 3,241 station rows to every executor;
+   `SortMergeJoin` shuffles 1.67M rows across the network. The most
+   transferable 90 seconds in the course.
+3. **Heating sensitivity** (2 min) — **the money shot.** Fit
+   `therms = a + b·HDD` per county; the slope is therms per extra degree-day,
+   which is what planners forecast winter load with.
+
+   > *"No UDF, no collect, no Python loop. The least-squares slope is just sums,
+   > so every county gets fitted at once in a single distributed aggregation.
+   > That's the difference between using Spark and using Spark well."*
+
+**Closing line:** *"The rest of this notebook is yours"* — rolling windows,
+`lag()` for overnight temperature drops, the long-to-wide pivot, skew diagnosis,
+and the same query in SQL. Makes the artifact worth keeping.
 
 ## Demo 4 — SageMaker Processing (5 min)
 
