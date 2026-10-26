@@ -176,35 +176,87 @@ and the same query in SQL. Makes the artifact worth keeping.
 
 ## Demo 4 — SageMaker Processing (5 min)
 
-**Slot:** Module 2, Lab 4 territory.
-**Baked:** `splits`.
-**Status:** ⚠️ not yet ported — `08-pipelines/preprocess.py` is still taxi schema.
+**Slot:** Module 2 · **Baked:** `splits`, `clarify`
 
-**Here's how you make it:** show `shared/prepare_ml_data.py` — a plain Python
-script, no SageMaker imports in the data logic. Then show how a Processing job
-wraps it: container + instance + input/output channels.
+### Processing is not another tool — it's the substrate
 
-**The line:** *"Processing is for when your transform is just code. No canvas, no
-cluster — hand SageMaker a script and a container and it runs it on whatever
-size machine you ask for."*
+This is the demo that ties Module 2 together, and you can prove it from the
+console with no code at all.
 
-**Here's one I made earlier:** `ml/gas/train/`, `validation/`, `test/` in S3.
-150,000 rows, 19 features, label first.
+Go to **SageMaker AI → Processing → Processing jobs**. In that one list you will
+see:
 
-**Worth 60 seconds — the honest bit:** this script is where the two real data
-traps live.
+```
+Clarify-Explainability-...        <- Clarify is a Processing job
+Clarify-Bias-...                  <- so is the bias half
+roi-smdemo-autopilot-t3-1-...     <- so is Autopilot's data step
+```
 
-- **Group leakage.** CEC consumption is *monthly*, so every daily row in a
-  county-month carries the same label. Split rows at random and the same
-  county-month lands on both sides — the model sees its test labels during
-  training. We split by county-month group. `--random-split` reproduces the
-  inflated score if you want to show the gap.
-- **47% of rows have no precipitation reading.** Many GHCN stations report
-  temperature but not rainfall. A null means "no gauge", not "no rain" — so we
-  impute zero *and* add a `precip_reported` flag, rather than throwing away half
-  the dataset.
+> *"Processing isn't a tool sitting alongside Data Wrangler and Clarify. It's
+> what they run ON. Data Wrangler's Export button generates a Processing job.
+> Clarify IS a Processing job with a particular container. A preprocessing step
+> in a Pipeline is a Processing job. Learn this one and you've learned what
+> those others are doing underneath."*
 
----
+That reframes the whole module: Data Wrangler is the visual front door, Spark is
+the big-data front door, and **Processing is the "I just have a script" front
+door** — and it's also the engine the other services are built on.
+
+### What the slides list, and why it's one thing
+
+Your Module 2 deck lists Processing for "data processing, feature engineering,
+data validation." Those aren't three features — they're three jobs people hand
+it. The service itself is one sentence:
+
+> **Here's my script, here's a container, here's S3 in and S3 out, run it on a
+> machine this size.**
+
+### "Here's how you make it"
+
+Open `shared/prepare_ml_data.py`. Point out that there is **not one SageMaker
+import in the data logic** — it's plain pandas.
+
+> *"That's the whole point. Processing doesn't ask you to learn a framework. Any
+> script that reads a path and writes a path will run."*
+
+### "Here's one I made earlier"
+
+S3 → `ml/gas/train/` · `validation/` · `test/`
+
+Real, verified numbers to put on screen:
+
+| split | rows | positive rate |
+|---|---|---|
+train | 104,956 | 0.2505 |
+validation | 22,796 | 0.2346 |
+test | 22,248 | 0.2541 |
+
+19 columns, `high_demand` first.
+
+### Spend 60 seconds on the honest bit
+
+**Group leakage.** CEC consumption is *monthly*, so every daily row inside a
+county-month carries the same label.
+
+> *"Split those rows at random and the same county-month lands on both sides.
+> The model sees its test labels during training and the score is inflated for
+> free. So we split by county-month group — 5,530 groups, assigned whole."*
+
+**47% of rows have no precipitation reading.** Many GHCN stations measure
+temperature but not rain.
+
+> *"A null means 'no gauge', not 'no rain'. So we impute zero AND add a
+> precip_reported flag — otherwise the model can't tell a dry day from a missing
+> instrument. And we do it before sampling, not after, or asking for 150,000
+> rows quietly hands you 79,000."*
+
+### The cost warning worth passing on
+
+While you're in the Processing jobs list, point at the Clarify job:
+
+> *"Clarify stands up a shadow endpoint to get predictions for SHAP. That
+> endpoint bills while the job runs — and if the job fails, it can be left
+> behind. Processing jobs can have children. Know what yours start."*
 
 ## Demo 5 — Feature Store (5 min)
 

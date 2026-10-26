@@ -266,13 +266,14 @@ If you have the time, this is the best thing in the whole day. Same data, two
 correlations:
 
 ```
-average WITHIN-county correlation :  +0.89
-POOLED correlation, all counties  :  -0.01
+average WITHIN-county correlation :  +0.7217     (top counties 0.88 - 0.91)
+POOLED correlation, all counties  :  -0.0088
 ```
 
-> *"Within every single county, cold weather drives gas demand — correlation of
-> nearly nine tenths. Pool all the counties together and compute one
-> correlation, and it vanishes. Zero. Slightly negative.*
+> *"County by county, cold weather drives gas demand — the big ones correlate
+> around nine tenths, and the average across all forty-seven is still north of
+> seven tenths. Pool all the counties together into one correlation and it
+> vanishes. Zero. Slightly negative.*
 >
 > *Nothing changed except the grain. Los Angeles burns more gas in a mild month
 > than Alpine does in a freezing one, so the difference BETWEEN counties

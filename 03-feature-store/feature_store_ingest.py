@@ -66,9 +66,14 @@ def main() -> int:
     df.columns = [re.sub(r"[^a-zA-Z0-9]+", "_", c).strip("_") for c in df.columns]
 
     # Feature Store needs a record-identifier and an event-time column.
-    df = df.reset_index().rename(columns={"index": "trip_id"})
+    # Record identifier. Named for what this dataset actually is: one row per
+    # station-day of weather joined to its county's monthly gas consumption.
+    # It was "trip_id" in the taxi original -- harmless to the code, but it sits
+    # in the console next to hdd65 and temp_max_c where a sharp student will
+    # read it and quietly stop trusting the demo.
+    df = df.reset_index().rename(columns={"index": "observation_id"})
     df["event_time"] = float(time.time())
-    df["trip_id"] = df["trip_id"].astype("string")
+    df["observation_id"] = df["observation_id"].astype("string")
 
     fg_name = config.resource("features")
     fg = FeatureGroup(name=fg_name, sagemaker_session=sm_sess)
@@ -76,7 +81,7 @@ def main() -> int:
 
     fg.create(
         s3_uri=f"s3://{args.bucket}/feature-store/",
-        record_identifier_name="trip_id",
+        record_identifier_name="observation_id",
         event_time_feature_name="event_time",
         role_arn=args.role_arn,
         enable_online_store=args.online,
