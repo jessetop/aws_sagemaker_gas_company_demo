@@ -34,6 +34,7 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args
 
 
@@ -41,7 +42,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--model-data", required=True, help="s3:// path to model.tar.gz")
     add_common_args(p)
-    p.add_argument("--prefix", default="ml/taxi")
+    p.add_argument("--prefix", default="ml/gas")
     args = p.parse_args()
 
     boto_sess = boto3.Session(profile_name=args.profile, region_name=args.region)
@@ -50,8 +51,8 @@ def main() -> int:
     # Idempotent: drop a model / endpoint-config left by a previous run.
     _sm = boto_sess.client("sagemaker")
     for _del in (
-        lambda: _sm.delete_model(ModelName="roi-smdemo-taxi-model"),
-        lambda: _sm.delete_endpoint_config(EndpointConfigName="roi-smdemo-taxi-endpoint"),
+        lambda: _sm.delete_model(ModelName=config.resource("model")),
+        lambda: _sm.delete_endpoint_config(EndpointConfigName=config.resource("endpoint")),
     ):
         try:
             _del()
@@ -65,10 +66,10 @@ def main() -> int:
         source_dir="04-training",
         framework_version="1.2-1",
         sagemaker_session=sm_sess,
-        name="roi-smdemo-taxi-model",
+        name=config.resource("model"),
     )
 
-    endpoint_name = "roi-smdemo-taxi-endpoint"
+    endpoint_name = config.resource("endpoint")
     predictor = None
     try:
         # Serverless: scales to zero, pay per request + duration. Cheapest demo.
@@ -95,7 +96,7 @@ def main() -> int:
             # Drop the label column; send the numeric feature row as one CSV line.
             feats = [[float(x) for x in row.split(",")[1:]]]
             pred = predictor.predict(feats)
-            print(f"  P(high_tip) = {pred}")
+            print(f"  P(high_demand) = {pred}")
     except Exception as exc:
         print("DEPLOY/INFER ERROR:", exc)
         return 1

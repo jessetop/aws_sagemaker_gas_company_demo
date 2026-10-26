@@ -1,8 +1,8 @@
 """
-Module 9 — SageMaker Autopilot (AutoML) on the taxi dataset.
+Module 9 — SageMaker Autopilot (AutoML) on the gas-demand dataset.
 
 Runs a COST-CAPPED Autopilot job that produces a ranked candidate leaderboard for
-predicting `high_tip` — the "model ranking" demo. Autopilot is the one demo that
+predicting `high_demand` — the "model ranking" demo. Autopilot is the one demo that
 costs dollars (not cents) because it trains many models, so this script constrains
 it hard: a small data sample, ENSEMBLING mode, max 10 candidates, and runtime caps.
 
@@ -39,9 +39,10 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args
 
-JOB_NAME = "roi-smdemo-autopilot"
+JOB_NAME = config.resource("autopilot")
 # Tag with the LIVE us-east-1 Unified Studio domain so the job is discoverable
 # there. Project/Environment are optional and only needed to pin it to a specific
 # US project — set SMDEMO_DZ_PROJECT / SMDEMO_DZ_ENVIRONMENT to enable. The job
@@ -85,17 +86,17 @@ def main() -> int:
 
     # Build a small sample so each candidate trains fast (cost control).
     s3 = boto_sess.client("s3")
-    full = s3.get_object(Bucket=b, Key="ml/taxi/train/train.csv")["Body"].read()
+    full = s3.get_object(Bucket=b, Key="ml/gas/train/train.csv")["Body"].read()
     df = pd.read_csv(io.BytesIO(full)).head(args.sample_rows)
     buf = io.StringIO()
     df.to_csv(buf, index=False)
-    s3.put_object(Bucket=b, Key="ml/taxi/autopilot/train.csv", Body=buf.getvalue())
-    input_path = f"s3://{b}/ml/taxi/autopilot/train.csv"
+    s3.put_object(Bucket=b, Key="ml/gas/autopilot/train.csv", Body=buf.getvalue())
+    input_path = f"s3://{b}/ml/gas/autopilot/train.csv"
     print(f"autopilot input: {input_path} ({len(df)} rows)")
 
     automl = AutoMLV2(
         problem_config=AutoMLTabularConfig(
-            target_attribute_name="high_tip",
+            target_attribute_name="high_demand",
             problem_type="BinaryClassification",
             max_candidates=args.max_candidates,          # cost cap
             max_runtime_per_training_job_in_seconds=600,  # cost cap

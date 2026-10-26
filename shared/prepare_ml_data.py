@@ -1,22 +1,50 @@
 """
 Prepare the supervised ML dataset shared by Modules 3-7.
 
-Reads the processed taxi Parquet (output of the Module 1/2 pipeline), turns it
-into a tabular **classification** problem, splits it, and writes train/val/test
-CSVs back to S3. Everything downstream (Feature Store, Training, Tuning,
-Clarify/Debugger, Deployment) consumes these splits.
+Reads the processed gas/weather Parquet (output of the Module 1/2 pipeline),
+turns it into a tabular **classification** problem, splits it, and writes
+train/val/test CSVs back to S3. Everything downstream (Feature Store, Training,
+Tuning, Clarify/Debugger, Deployment) consumes these splits.
 
-Task: among **card-paying** riders (the only ones whose tip is reliably recorded),
-predict `high_tip` = tipped > 20% of fare. Filtering to card payments avoids the
-obvious leak that cash trips always record tip = 0.
+Task: from the weather at a station on a day, predict whether that station's
+county was in a **high gas demand** month -- `high_demand` = county-month total
+therms in the top quartile *for that county*.
 
-Runs locally with pandas/pyarrow (free) — the processed data is small once we
-project columns and filter. Sampling keeps training fast and cheap while still
-exceeding 100k samples (Kiro Req 1).
+Two things about this framing are deliberate, and both are worth saying out loud
+in class because getting either wrong produces a model that scores well and
+means nothing.
+
+1. THE LABEL IS RANKED WITHIN COUNTY, NOT GLOBALLY. Los Angeles burns orders of
+   magnitude more gas than Alpine. A global threshold would just rediscover
+   which counties are big: the model would hit a high AUC by memorising
+   `county`, and would have learned nothing about weather. Ranking inside each
+   county forces the weather signal to do the work.
+
+2. THE THERMS COLUMNS ARE DROPPED. `total_therms`, `res_therms` and
+   `nonres_therms` are what the label is computed FROM. Leaving any of them in
+   the feature set lets the model read the answer off its own input -- the gas
+   equivalent of the taxi series' "cash trips always tip zero" leak, and much
+   easier to do by accident because the column names look innocent.
+
+GROUP STRUCTURE / SPLITTING (the real lesson here)
+--------------------------------------------------
+CEC consumption is MONTHLY, so every daily row inside one county-month carries
+the same label. A random row-level split therefore puts rows from the same
+county-month on both sides of the split, the model effectively sees test labels
+during training, and the score is inflated for free.
+
+So we split by **county-month group**, not by row. The difference is usually
+several AUC points of pure self-deception, and it is easy to demonstrate live:
+pass --random-split to reproduce the inflated number, then compare.
+
+Runs locally with pandas/pyarrow (free) -- the processed data is small once we
+project columns. Sampling keeps training fast and cheap while still exceeding
+100k samples (Kiro Req 1).
 
 Usage:
-    python prepare_ml_data.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --profile roitraining --region us-east-1 --sample 150000
+    python shared/prepare_ml_data.py
+    python shared/prepare_ml_data.py --sample 150000
+    python shared/prepare_ml_data.py --random-split   # the WRONG way, for contrast
 """
 
 import argparse
@@ -24,8 +52,8 @@ import io
 import sys
 
 import boto3
+import numpy as np
 import pandas as pd
-import pyarrow.compute as pc
 import pyarrow.dataset as ds
 import pyarrow.fs as fs
 
@@ -40,24 +68,45 @@ from shared.config import add_common_args
 
 # Feature columns fed to the model (plus the engineered categoricals we one-hot).
 NUMERIC = [
-    "trip_distance",
-    "trip_duration_min",
-    "trip_speed_mph",
-    "pickup_hour",
-    "passenger_count",
-    "fare_amount",
+    "temp_max_c",
+    "temp_min_c",
+    "temp_mean_f",
+    "temp_range_c",
+    "precip_mm",
+    "hdd65",
+    "elevation_m",
+    "obs_month",
 ]
-CATEGORICAL = ["trip_distance_bucket", "pickup_borough"]
-BOOL = ["is_airport_trip"]
-TARGET = "high_tip"
+CATEGORICAL = ["hdd_bucket", "season"]
+BOOL = ["is_weekend", "is_heating_season"]
+TARGET = "high_demand"
+
+# Read but never used as features: the label is derived from these, so they are
+# dropped immediately afterwards. See the module docstring.
+LABEL_SOURCE = ["total_therms"]
+# Carried through to build the group key for splitting, then dropped.
+GROUP_KEYS = ["county_key", "obs_year"]
+
+# County is deliberately NOT a feature. Because the label is ranked within
+# county, county carries no signal by construction -- including it would add 49
+# one-hot columns of pure noise and invite the "but my feature importance says
+# county matters" confusion.
 
 
 def main() -> int:
     p = argparse.ArgumentParser()
     add_common_args(p, role=False)
     p.add_argument("--sample", type=int, default=150_000)
-    p.add_argument("--source-prefix", default="processed/emr")
-    p.add_argument("--out-prefix", default="ml/taxi")
+    p.add_argument("--source-prefix", default="processed/visual-etl")
+    p.add_argument("--out-prefix", default="ml/gas")
+    p.add_argument(
+        "--random-split",
+        action="store_true",
+        help="Split rows at random instead of by county-month. WRONG on purpose: "
+             "demonstrates the inflated score that group leakage buys you.",
+    )
+    p.add_argument("--quantile", type=float, default=0.75,
+                   help="Within-county therms quantile above which a month is 'high demand'")
     args = p.parse_args()
 
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
@@ -69,7 +118,8 @@ def main() -> int:
         region=args.region,
     )
 
-    # Read only the columns we need, filtered to card payments, straight from S3.
+    # Read only the columns we need, straight from S3. obs_year/obs_month are
+    # Hive partition columns on the Module 1 output.
     print("reading processed data from S3...")
     dataset = ds.dataset(
         f"{args.bucket}/{args.source_prefix}",
@@ -77,21 +127,37 @@ def main() -> int:
         format="parquet",
         partitioning="hive",
     )
-    cols = NUMERIC + CATEGORICAL + BOOL + ["payment_label", "tip_pct"]
-    table = dataset.to_table(
-        columns=cols, filter=pc.field("payment_label") == "Credit card"
-    )
-    df = table.to_pandas()
-    print(f"card-payment rows: {len(df):,}")
+    cols = sorted(set(NUMERIC + CATEGORICAL + BOOL + LABEL_SOURCE + GROUP_KEYS))
+    df = dataset.to_table(columns=cols).to_pandas()
+    print(f"rows: {len(df):,}")
+    if df.empty:
+        print(f"ERROR: no rows under s3://{args.bucket}/{args.source_prefix}/")
+        print("Run Module 1 first (01-data-prep/new-visual-etl/run_glue_job.py --start).")
+        return 1
 
-    # Build the label, then drop the columns that would leak it.
-    df[TARGET] = (df["tip_pct"] > 20).astype(int)
-    df = df.drop(columns=["payment_label", "tip_pct"])
+    # ---- label: top-quartile therms WITHIN each county ---------------------
+    # Rank inside the county so the model cannot win by memorising county size.
+    county_rank = df.groupby("county_key")["total_therms"].rank(pct=True)
+    df[TARGET] = (county_rank > args.quantile).astype(int)
+    print(f"positive rate: {df[TARGET].mean():.4f}  (target ~{1 - args.quantile:.2f})")
+
+    # The group a row belongs to, for an honest split. One county-month is one
+    # group because the label is constant across it.
+    group = (
+        df["county_key"].astype(str)
+        + "|" + df["obs_year"].astype(str)
+        + "|" + df["obs_month"].astype(str)
+    )
+
+    # Drop the label source NOW, before it can leak into the feature matrix.
+    df = df.drop(columns=LABEL_SOURCE + ["county_key", "obs_year"])
 
     # Sample for cheap/fast training (still > 100k).
     if len(df) > args.sample:
-        df = df.sample(n=args.sample, random_state=42).reset_index(drop=True)
-    print(f"sampled rows: {len(df):,}  | positive rate: {df[TARGET].mean():.3f}")
+        idx = df.sample(n=args.sample, random_state=42).index
+        df = df.loc[idx]
+        group = group.loc[idx]
+        print(f"sampled rows: {len(df):,}")
 
     # One-hot encode categoricals; cast bool to int. Keep label as the FIRST
     # column (the convention SageMaker built-in algorithms expect, and easy for
@@ -99,20 +165,52 @@ def main() -> int:
     df[BOOL] = df[BOOL].astype(int)
     df = pd.get_dummies(df, columns=CATEGORICAL, drop_first=True)
     # pandas >=2 get_dummies returns bool columns. Cast to int so the CSVs are
-    # purely numeric — required for clean CSV inference at the endpoint AND for
+    # purely numeric -- required for clean CSV inference at the endpoint AND for
     # Feature Store, which cannot infer a feature type from a bool dtype.
     bool_cols = df.select_dtypes(include="bool").columns
     df[bool_cols] = df[bool_cols].astype(int)
+
+    before = len(df)
     df = df.dropna()
+    group = group.loc[df.index]
+    if len(df) < before:
+        print(f"dropped {before - len(df):,} rows with nulls")
+
     label = df.pop(TARGET)
     df.insert(0, TARGET, label)
 
-    # 70/15/15 split (Kiro Req 1 defaults).
-    n = len(df)
-    train = df.iloc[: int(0.70 * n)]
-    val = df.iloc[int(0.70 * n) : int(0.85 * n)]
-    test = df.iloc[int(0.85 * n) :]
+    # ---- split -------------------------------------------------------------
+    if args.random_split:
+        # The WRONG way, kept deliberately so the inflated score can be shown
+        # next to the honest one.
+        print("!! --random-split: rows from one county-month will land on BOTH")
+        print("!! sides of the split. Expect an optimistically inflated AUC.")
+        shuffled = df.sample(frac=1.0, random_state=42)
+        n = len(shuffled)
+        train = shuffled.iloc[: int(0.70 * n)]
+        val = shuffled.iloc[int(0.70 * n) : int(0.85 * n)]
+        test = shuffled.iloc[int(0.85 * n) :]
+    else:
+        # Group split: every row of a county-month goes to exactly one side.
+        groups = pd.Series(group.unique())
+        groups = groups.sample(frac=1.0, random_state=42).reset_index(drop=True)
+        n_g = len(groups)
+        train_g = set(groups.iloc[: int(0.70 * n_g)])
+        val_g = set(groups.iloc[int(0.70 * n_g) : int(0.85 * n_g)])
+        print(f"county-month groups: {n_g:,} "
+              f"(train {len(train_g):,} / val {len(val_g):,} / test {n_g - len(train_g) - len(val_g):,})")
+        in_train = group.isin(train_g)
+        in_val = group.isin(val_g)
+        train = df[in_train]
+        val = df[in_val]
+        test = df[~in_train & ~in_val]
+
     print(f"train={len(train):,} val={len(val):,} test={len(test):,}")
+    for name, part in (("train", train), ("validation", val), ("test", test)):
+        if part.empty:
+            print(f"ERROR: the {name} split is empty; lower --sample or widen the data range.")
+            return 1
+        print(f"  {name} positive rate: {part[TARGET].mean():.4f}")
 
     s3 = session.client("s3")
     for name, part in [("train", train), ("validation", val), ("test", test)]:

@@ -1,5 +1,5 @@
 """
-Module 4 — launch the taxi classifier as a SageMaker training job.
+Module 4 — launch the gas-demand classifier as a SageMaker training job.
 
 This is the OLD-way launcher: the SageMaker Python SDK `SKLearn` estimator pointed
 at our custom `train.py`, run on the cheapest practical instance. The NEW way runs
@@ -32,6 +32,7 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args
 
 
@@ -39,7 +40,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     add_common_args(p)
     p.add_argument("--instance-type", default="ml.m5.large")  # cheapest practical
-    p.add_argument("--prefix", default="ml/taxi")
+    p.add_argument("--prefix", default="ml/gas")
     args = p.parse_args()
 
     boto_sess = boto3.Session(profile_name=args.profile, region_name=args.region)
@@ -55,7 +56,7 @@ def main() -> int:
         instance_count=1,
         framework_version="1.2-1",
         sagemaker_session=sm_sess,
-        base_job_name="roi-smdemo-taxi-train",
+        base_job_name=config.resource("train"),
         # Three hyperparameters passed through to train.py (Kiro Req 5.3).
         hyperparameters={
             "learning-rate": 0.1,

@@ -1,8 +1,8 @@
 """
 Custom SageMaker training script (Kiro Req 2) — shared by old and new way.
 
-Trains a scikit-learn classifier to predict `high_tip` from the engineered taxi
-features. Written to the SageMaker training contract so the SAME script runs as a
+Trains a scikit-learn classifier to predict `high_demand` from the engineered
+gas/weather features. Written to the SageMaker training contract so the SAME script runs as a
 classic SageMaker AI training job AND as a Unified Studio project training job —
 the launcher changes, the script does not.
 
@@ -102,7 +102,7 @@ def model_fn(model_dir):
 
 
 def predict_fn(input_data, model):
-    """Return P(high_tip) for each input row.
+    """Return P(high_demand) for each input row.
 
     The container's CSV input_fn hands a single row back as a 1D array; reshape
     to 2D so predict_proba accepts it (works for batches too).

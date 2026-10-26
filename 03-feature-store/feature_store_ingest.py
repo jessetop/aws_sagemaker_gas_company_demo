@@ -1,7 +1,7 @@
 """
 Module 3 — SageMaker Feature Store (Kiro-adjacent), the old way.
 
-Creates a FeatureGroup for the engineered taxi trip features and ingests a small
+Creates a FeatureGroup for the engineered gas-demand features and ingests a small
 batch. This is the classic SageMaker AI experience: define a schema in code,
 create online + offline stores, and call ingest() from the SDK.
 
@@ -36,6 +36,7 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args
 
 
@@ -44,7 +45,7 @@ def main() -> int:
     add_common_args(p)  # --profile / --region / --bucket / --role-arn
     p.add_argument("--rows", type=int, default=2000)
     p.add_argument("--online", action="store_true", help="enable online store")
-    p.add_argument("--prefix", default="ml/taxi")
+    p.add_argument("--prefix", default="ml/gas")
     args = p.parse_args()
 
     boto_sess = boto3.Session(profile_name=args.profile, region_name=args.region)
@@ -69,7 +70,7 @@ def main() -> int:
     df["event_time"] = float(time.time())
     df["trip_id"] = df["trip_id"].astype("string")
 
-    fg_name = "roi-smdemo-taxi-features"
+    fg_name = config.resource("features")
     fg = FeatureGroup(name=fg_name, sagemaker_session=sm_sess)
     fg.load_feature_definitions(data_frame=df)  # infers schema from the DataFrame
 

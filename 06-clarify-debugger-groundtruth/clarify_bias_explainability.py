@@ -1,7 +1,7 @@
 """
 Module 6 — SageMaker Clarify: bias + explainability, the old way.
 
-Runs a SageMaker Clarify processing job against the trained taxi model to compute
+Runs a SageMaker Clarify processing job against the trained gas model to compute
 (a) pre-training bias metrics on a facet column and (b) SHAP feature-attribution
 explainability. This is the classic SageMaker AI experience: configure a Clarify
 processor and a few config objects in the SDK.
@@ -13,7 +13,7 @@ Cost: one short processing job on the cheapest instance, then done.
 
 Usage:
     python clarify_bias_explainability.py \
-        --model-name roi-smdemo-taxi-model \
+        --model-name roi-smdemo-gas-model \
         --bucket roi-smdemo-029331796573-us-east-1 \
         --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
         --profile roitraining --region us-east-1
@@ -40,8 +40,8 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--model-name", required=True, help="an existing SageMaker Model")
     add_common_args(p)
-    p.add_argument("--prefix", default="ml/taxi")
-    p.add_argument("--facet", default="is_airport_trip", help="bias facet column")
+    p.add_argument("--prefix", default="ml/gas")
+    p.add_argument("--facet", default="is_heating_season", help="bias facet column")
     p.add_argument(
         "--analysis-rows",
         type=int,
@@ -82,14 +82,14 @@ def main() -> int:
     data_config_bias = clarify.DataConfig(
         s3_data_input_path=analysis_input,
         s3_output_path=f"s3://{b}/clarify/bias",
-        label="high_tip",
+        label="high_demand",
         headers=headers,
         dataset_type="text/csv",
     )
     data_config_shap = clarify.DataConfig(
         s3_data_input_path=analysis_input,
         s3_output_path=f"s3://{b}/clarify/shap",
-        label="high_tip",
+        label="high_demand",
         headers=headers,
         dataset_type="text/csv",
     )

@@ -31,6 +31,7 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args
 
 
@@ -38,7 +39,7 @@ def main() -> int:
     p = argparse.ArgumentParser()
     add_common_args(p)
     p.add_argument("--instance-type", default="ml.m5.large")
-    p.add_argument("--prefix", default="ml/taxi")
+    p.add_argument("--prefix", default="ml/gas")
     args = p.parse_args()
 
     boto_sess = boto3.Session(profile_name=args.profile, region_name=args.region)
@@ -53,7 +54,7 @@ def main() -> int:
         instance_count=1,
         framework_version="1.2-1",
         sagemaker_session=sm_sess,
-        base_job_name="roi-smdemo-taxi-hpo",
+        base_job_name=config.resource("hpo"),
         hyperparameters={"n-estimators": 150},  # fixed; tune the two below
         metric_definitions=[
             {"Name": "validation:auc", "Regex": "validation_auc=([0-9\\.]+)"}
@@ -77,7 +78,7 @@ def main() -> int:
         max_jobs=4,
         max_parallel_jobs=2,
         strategy="Bayesian",
-        base_tuning_job_name="roi-smdemo-taxi-hpo",
+        base_tuning_job_name=config.resource("hpo"),
         tags=[{"Key": "Project", "Value": "sagemaker-unified-studio-demos"}],
     )
 
