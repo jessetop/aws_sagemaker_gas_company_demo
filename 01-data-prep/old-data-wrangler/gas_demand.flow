@@ -57,18 +57,19 @@
           "output_name": "default"
         }
       ],
-      "outputs": [{ "name": "default" }]
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
     },
     {
       "node_id": "a1000000-0000-4000-8000-000000000003",
       "type": "TRANSFORM",
-      "operator": "sagemaker.spark.handle_missing_0.1",
+      "operator": "sagemaker.spark.custom_pandas_0.1",
+      "name": "clean GHCN",
       "parameters": {
-        "operator": "Drop missing",
-        "drop_missing_parameters": {
-          "dimension": "Drop Rows",
-          "input_column": ["ID", "DATE", "DATA_VALUE"]
-        }
+        "code": "# Table is available as variable `df`\nimport pandas as pd\n\n# 1. Drop rows missing the fields everything else depends on.\ndf = df.dropna(subset=['ID', 'DATE', 'DATA_VALUE'])\n\n# 2. Q_FLAG is populated ONLY when a reading FAILED quality control,\n#    so \"good data\" means the flag is empty.\ndf = df[df['Q_FLAG'].isna() | (df['Q_FLAG'].astype(str).str.strip() == '')]\n\n# 3. DATA_VALUE is an INTEGER in TENTHS of a degree C.\n#    390 means 39.0 C. Miss this and every number is 10x wrong.\ndf['temp_max_c'] = df['DATA_VALUE'] / 10.0\n\n# 4. DATE is the STRING \"20240115\", not a date. Parse it explicitly --\n#    a silent cast returns NaT and quietly deletes rows.\ndf['obs_date'] = pd.to_datetime(df['DATE'].astype(str), format='%Y%m%d', errors='coerce')\ndf['obs_month'] = df['obs_date'].dt.month\n\n# 5. THE TARGET. 65 F (18.33 C) is the utility industry's heating\n#    base temperature. If the day's HIGH never reached it, that is a\n#    heating day -- the days SoCalGas actually has to supply gas for.\ndf['heating_day'] = (df['temp_max_c'] < 18.33).astype(int)\n\ndf = df[['ID', 'obs_date', 'obs_month', 'temp_max_c', 'heating_day']]\n"
       },
       "inputs": [
         {
@@ -77,46 +78,14 @@
           "output_name": "default"
         }
       ],
-      "outputs": [{ "name": "default" }]
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
     },
     {
       "node_id": "a1000000-0000-4000-8000-000000000004",
-      "type": "TRANSFORM",
-      "operator": "sagemaker.spark.manage_columns_0.1",
-      "parameters": {
-        "operator": "Rename column",
-        "rename_column_parameters": {
-          "input_column": "DATA_VALUE",
-          "new_name": "value_tenths_c"
-        }
-      },
-      "inputs": [
-        {
-          "name": "df",
-          "node_id": "a1000000-0000-4000-8000-000000000003",
-          "output_name": "default"
-        }
-      ],
-      "outputs": [{ "name": "default" }]
-    },
-    {
-      "node_id": "a1000000-0000-4000-8000-000000000005",
-      "type": "TRANSFORM",
-      "operator": "sagemaker.spark.custom_pandas_0.1",
-      "parameters": {
-        "code": "# Table is available as variable `df`\n# GHCN stores temperature as an INTEGER in TENTHS of a degree C.\n# 390 means 39.0 C. Forget this and every number is 10x wrong.\ndf['temp_max_c'] = df['value_tenths_c'] / 10.0\n\n# GHCN DATE is the STRING \"20240115\", not a date. Parse it explicitly.\nimport pandas as pd\ndf['obs_date'] = pd.to_datetime(df['DATE'].astype(str), format='%Y%m%d', errors='coerce')\n\n# Q_FLAG is populated ONLY when a reading failed quality control,\n# so \"good data\" means the flag is empty.\ndf = df[df['Q_FLAG'].isna() | (df['Q_FLAG'].astype(str).str.strip() == '')]\n"
-      },
-      "inputs": [
-        {
-          "name": "df",
-          "node_id": "a1000000-0000-4000-8000-000000000004",
-          "output_name": "default"
-        }
-      ],
-      "outputs": [{ "name": "default" }]
-    },
-    {
-      "node_id": "a1000000-0000-4000-8000-000000000006",
       "type": "SOURCE",
       "operator": "sagemaker.s3_source_0.1",
       "parameters": {
@@ -146,7 +115,7 @@
       ]
     },
     {
-      "node_id": "a1000000-0000-4000-8000-000000000007",
+      "node_id": "a1000000-0000-4000-8000-000000000005",
       "type": "TRANSFORM",
       "operator": "sagemaker.spark.infer_and_cast_type_0.1",
       "parameters": {},
@@ -163,17 +132,21 @@
       "inputs": [
         {
           "name": "default",
-          "node_id": "a1000000-0000-4000-8000-000000000006",
+          "node_id": "a1000000-0000-4000-8000-000000000004",
           "output_name": "default"
         }
       ],
-      "outputs": [{ "name": "default" }]
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
     },
     {
-      "node_id": "a1000000-0000-4000-8000-000000000008",
+      "node_id": "a1000000-0000-4000-8000-000000000006",
       "type": "TRANSFORM",
       "operator": "sagemaker.spark.join_tables_0.1",
-      "name": "joined_to_stations",
+      "name": "joined to CA stations",
       "parameters": {
         "left_column": "ID",
         "right_column": "station_id",
@@ -182,16 +155,41 @@
       "inputs": [
         {
           "name": "df",
-          "node_id": "a1000000-0000-4000-8000-000000000005",
+          "node_id": "a1000000-0000-4000-8000-000000000003",
           "output_name": "default"
         },
         {
           "name": "df",
-          "node_id": "a1000000-0000-4000-8000-000000000007",
+          "node_id": "a1000000-0000-4000-8000-000000000005",
           "output_name": "default"
         }
       ],
-      "outputs": [{ "name": "default" }]
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000007",
+      "type": "VISUALIZATION",
+      "operator": "sagemaker.visualizations.quick_model_0.1",
+      "parameters": {
+        "name": "Can geography predict a heating day?",
+        "label": "heating_day"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "a1000000-0000-4000-8000-000000000006",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "default"
+        }
+      ]
     }
   ]
 }

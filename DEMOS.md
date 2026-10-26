@@ -86,44 +86,106 @@ one.
 
 ---
 
-## Demo 2 — Data Wrangler (5 min)
+## Demo 2 — Data Wrangler: catching your own leak (5 min)
 
-**Slot:** Module 2, Data Processing.
-**Baked:** `data` (the processed output is the "already finished" artifact).
+**Module 2, first tool** · **Baked:** two flows, both pre-run
+**Verified:** F1 **1.0** -> **0.675**
 
-⚠️ **Data Wrangler is inside Canvas now.** In the modern Studio experience
-Studio Classic is gone — Data Wrangler is reached through SageMaker Canvas. That
-means this demo starts a **billable Canvas session**. Run
-`powershell -File cleanup/kill_canvas.ps1` when you're done; the reaper is a
-backstop, not an excuse.
+> ⚠️ Billable Canvas session. `powershell -File cleanup/kill_canvas.ps1` after.
 
-**Here's how you make it:**
+### The two cakes
 
-1. Canvas → Data Wrangler → Import → S3 → `raw/observations/`.
-2. Let it profile. Show the inferred schema and point at what's wrong with it:
-   - `DATE` is a **string**, `"20240115"`
-   - `DATA_VALUE` is an **integer in tenths of a degree C** — `390` is 39.0 °C
-   - `Q_FLAG` is populated only when a reading **failed** quality control
-3. Run **Data Quality and Insights**. One click, and it is the single most
-   impressive thing in the product — distributions, missing values, outliers,
-   on real client data.
-4. Add two transforms live so they see the no-code loop: rename `DATA_VALUE`,
-   then a custom formula `value_tenths / 10`.
-5. Click **Export → S3**.
+Import both before class and run the Quick Model in each, so both results are
+already sitting there:
 
-**Hit cancel:** *"That spins up a Spark job for a few minutes. Let's skip ahead."*
+| Flow | S3 | Quick Model result |
+|---|---|---|
+`gas_demand.flow` | `s3://<bucket>/flows/gas_demand.flow` | **F1 = 1.0** + leakage warning |
+`gas_demand_no_leak.flow` | `s3://<bucket>/flows/gas_demand_no_leak.flow` | **F1 = 0.675** |
 
-**Here's one I made earlier:** open `processed/visual-etl/` and show the finished
-25-column table — real county names, `hdd65`, `hdd_bucket`, therms joined on.
+Both are 6-8 nodes: GHCN TMAX source -> infer types -> custom pandas (the
+cleaning) -> join to the CA stations CSV -> Quick Model. The second adds a
+**Drop column** on `temp_max_c` before the model.
 
-> **One-time setup job for you:** build this flow once in Canvas and use
-> **Export → flow file**, then commit it to
-> `01-data-prep/old-data-wrangler/`. The flow JSON in the repo today is a
-> three-node stub and should not be imported live. Hand-writing that JSON is not
-> safe — the operator schema is version-specific and a flow that fails to import
-> on stage is worse than no flow at all.
+### Beat 1 - the data is a mess, and that's the point (90s)
 
----
+Open flow 1 at the **infer types** node. Three traps in a seven-column table:
+
+| Column | The trap |
+|---|---|
+`DATE` | a **string**, `"20240115"` |
+`DATA_VALUE` | integer in **tenths of a degree C** - `390` is 39.0 C |
+`Q_FLAG` | set **only when a reading failed** quality control |
+
+> *"Miss the tenths and every number you produce is plausible and ten times
+> wrong. This is what real public data looks like."*
+
+Then the **clean GHCN** node - all four fixes as commented pandas.
+
+### Beat 2 - the target (30s)
+
+> *"Sixty-five Fahrenheit is the utility industry's heating base. If the day's
+> HIGH never got there, SoCalGas had to supply gas for it. That's our label:
+> `heating_day`."*
+
+### Beat 3 - F1 of 1.0, and why that's bad news (90s)
+
+Open the Quick Model analysis.
+
+> *"F1 of one-point-zero. Perfect. Who's suspicious?"*
+
+Then read Canvas's own warning aloud:
+
+> *"The feature temp_max_c predicted the target with more than 0.95 prediction
+> power, which often indicates an error called Target leakage."*
+
+> *"The tool caught me. I defined heating_day AS temp_max_c below 18.33, then
+> left temp_max_c in the features. The model isn't predicting anything - it's
+> reading the answer off its own input."*
+
+Honesty plays well here: this was a genuine mistake, found by the product.
+
+### Beat 4 - here's one I made earlier (90s)
+
+Switch to `gas_demand_no_leak.flow`. One extra node: Drop column on
+`temp_max_c`.
+
+> **F1 = 0.675**
+
+Remaining features: `obs_month`, `latitude`, `longitude`, `elevation_m`.
+
+> *"Zero point six seven five. That's a real number. The question is now
+> genuinely interesting - can where you are and what month it is tell you
+> whether the gas had to flow? Substantially, yes. Not perfectly. And that gap
+> is where the actual modelling work lives."*
+
+### The through-line to set up Demo 7
+
+> *"Data Wrangler caught that leak automatically because it was blatant - one
+> column, 0.95 prediction power. Hold that thought. Later we'll hit a model
+> scoring 0.92 that nothing warned us about, and we only found it by checking
+> feature importance ourselves. The tool catches the obvious leak. You have to
+> catch the subtle one."*
+
+That makes Demo 2 and Demo 7 bookends instead of two unrelated demos.
+
+### Notes on the flow files
+
+Both were hand-authored against a verified AWS sample
+(`aws-samples/amazon-sagemaker-data-wrangler-hospital-readmission-prediction`)
+after two failed attempts at guessing the schema. Three rules learned the hard
+way, worth knowing before you edit them:
+
+1. `infer_and_cast_type` needs a top-level `trained_parameters.schema` dict of
+   column -> type. Omit it and you get
+   `TypeError: 'NoneType' object is not subscriptable`.
+2. SOURCE nodes need `outputs[].sampling` with `sampling_method` / `limit_rows`.
+3. **Nodes must be in dependency order** - every input must appear earlier in
+   the `nodes` array, or you get `KeyError: '<node-id>#default'`.
+
+Only operators proven by the sample are used: `s3_source`,
+`infer_and_cast_type`, `custom_pandas`, `join_tables`, `manage_columns`
+(Drop column variant only), `visualizations.quick_model`.
 
 ## Demo 3 — PySpark, serverless (5 min)
 
