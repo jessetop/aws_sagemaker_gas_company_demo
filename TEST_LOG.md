@@ -126,6 +126,68 @@ HDD bucket distribution over 10 years of California station-days:
   validated on real Glue rather than locally. Glue runs cost ~$0.31 each, which
   is cheap enough to be the inner loop.
 
+## 2026-10-26 — redeploy + ML chain
+
+| Step | What was tested | Result |
+|---|---|---|
+| Terraform | `apply` from scratch, second time | ✅ 19 added; domain `d-nvvqokjr2qep` |
+| Canvas reaper | live invoke after redeploy | ✅ `{"killed": [], "kept": [], "errors": []}` |
+| 0 Setup | `stage_dataset.py 2015-2024` | ✅ 419 Parquet objects + 4 lookups |
+| 1 Visual ETL | Glue 4.0, 4×G.1X | ✅ SUCCEEDED, 602 s, 0.6689 DPU-h (**~$0.29**) |
+| 1 Visual ETL | row counts reproduced exactly | ✅ 201,486,363 → **1,668,673** (matches 2026-10-24) |
+| — | `prepare_ml_data.py` (group split) | ✅ 150,000 rows, 5,530 county-month groups, 104,956/22,796/22,248 |
+| 4 Training | SageMaker `SKLearn`, `ml.m5.large` | ✅ acc 0.8794, auc 0.9235, **145 billable sec** |
+
+### 🔴 The model does not work, and the 0.92 is why we know
+
+Training reported AUC **0.9235**, which is far above the taxi series' 0.61 and
+should have been treated as suspicious immediately. It was. Ablation:
+
+| Feature set / label | AUC |
+|---|---|
+| all features, seasonal label | **0.9235** |
+| calendar only (`obs_month`, `season_*`, `is_heating_season`) | 0.9043 |
+| weather only (calendar dropped) | 0.8298 |
+| **deseasonalised label** | **0.5159** |
+
+Feature importance on the default label: `season_Winter` 0.705, `obs_month`
+0.216 — the calendar is 92% of the model. Every weather column combined shares
+0.079.
+
+This is **not leakage**; the month is legitimately available at prediction time.
+It is a degenerate task: gas demand is overwhelmingly seasonal, so a county's
+top-quartile months *are* its winter months and "is it winter" nearly
+determines the label.
+
+Deseasonalising the label (rank within county **and** month-of-year, so the
+question becomes "was this January unusual for this county's Januaries?") drops
+the score to **0.5159 — a coin flip.**
+
+**Root cause: grain mismatch.** The label is a county-MONTH aggregate while the
+features are a single STATION-DAY. One day's weather at one station carries
+almost no information about whether a whole county-month was anomalous.
+
+**Fix (not yet implemented):** aggregate features to station-month to match the
+label — mean/min/max temperature, total HDD, days below freezing, total
+precipitation per station-month. That is also the real utility forecasting
+formulation, and ~3,241 stations × 120 months leaves several hundred thousand
+rows, comfortably above the 100k requirement.
+
+Until that lands, the ML modules (3-7, 9) are honest **workflow** demos and must
+not be presented as modelling results. `--no-calendar` and `--deseasonalize`
+exist so the ablation can be reproduced live; see DEMO_GUIDE.md.
+
+### Also fixed on 2026-10-26
+
+- **`prepare_ml_data.py` dropped 47% of rows to nulls.** `precip_mm` is missing
+  on 782,762 of 1,668,673 California station-days (46.9%) — many GHCN stations
+  report temperature but not rainfall. Dropping half the dataset to keep one
+  optional feature is the wrong trade. Now imputes 0 and adds a
+  `precip_reported` indicator so the model can tell "dry day" from "no gauge".
+- **`--sample` was a lie.** Sampling happened *before* the null drop, so asking
+  for 150,000 rows silently returned 79,485. Reordered. Same class of mistake
+  as filtering after a shuffle instead of before it.
+
 ## 2026-10-24 — teardown
 
 | Step | What was tested | Result |

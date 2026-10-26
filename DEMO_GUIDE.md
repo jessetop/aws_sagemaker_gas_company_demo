@@ -191,6 +191,61 @@ python 05-experiments-tuning/launch_tuning.py
 python 07-deployment/deploy_and_infer.py  # auto-deletes its endpoint
 ```
 
+### ⚠️ Read this before you put an AUC on a slide
+
+The default label gives **AUC 0.9235**. Do not present that as a result. Here is
+what it actually is, measured:
+
+| | AUC |
+|---|---|
+| all features | **0.9235** |
+| calendar only (`obs_month`, `season_*`, `is_heating_season`) | 0.9043 |
+| weather only (calendar dropped) | 0.8298 |
+| **deseasonalised label** (`--deseasonalize`) | **0.5159** |
+
+Feature importance on the default label: `season_Winter` **0.705**, `obs_month`
+**0.216**. Everything else — every temperature, HDD, precipitation column —
+shares the remaining 0.079.
+
+So the 0.92 is a calendar lookup. The model learned "winter is cold and people
+heat their homes." True, and worth nothing. It is **not** leakage — the month is
+legitimately known at prediction time — it is a *degenerate task*.
+
+And when you strip the seasonal signal out with `--deseasonalize`, the score
+collapses to **0.5159**, i.e. a coin flip. That is the honest diagnosis:
+
+> **The label is a county-MONTH aggregate, but the features are a single
+> STATION-DAY.** One day's weather at one station cannot tell you whether a
+> whole county-month was unusually high-demand for that time of year. The grain
+> does not match.
+
+**The fix** (not yet implemented): aggregate the features to station-month to
+match the label's grain — mean/min/max temperature for the month, total HDD,
+count of days below freezing, total precipitation. That is also the real
+utility-forecasting formulation, and ~3,241 stations × 120 months is still
+several hundred thousand rows. Until that is done, treat the ML modules as
+**workflow** demos, not modelling results.
+
+### How to use this honestly in class
+
+This is a better segment than a good score would have been. Run it live:
+
+```bash
+python shared/prepare_ml_data.py                  # AUC ~0.92
+python shared/prepare_ml_data.py --no-calendar    # AUC ~0.83
+python shared/prepare_ml_data.py --deseasonalize  # AUC ~0.52
+```
+
+> "Our first model scored 0.92 and we were delighted. Then we looked at feature
+> importance: seventy percent of it was one column — is it winter. So we asked
+> the harder question — was *this* January unusual for this county — and the
+> model fell to a coin flip. The lesson isn't that the model was bad. It's that
+> the question was easy, and we didn't notice until we checked."
+
+Then show the grain-mismatch diagnosis. That arc — confident number, feature
+importance, honest re-framing, root cause — is the single most useful thing an
+ML practitioner can watch someone do.
+
 ### The leakage lesson — do this one live
 
 CEC consumption is **monthly**, so every daily row inside a county-month

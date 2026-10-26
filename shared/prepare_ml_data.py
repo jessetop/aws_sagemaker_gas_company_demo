@@ -79,6 +79,8 @@ NUMERIC = [
 ]
 CATEGORICAL = ["hdd_bucket", "season"]
 BOOL = ["is_weekend", "is_heating_season"]
+# Added at runtime by the precipitation imputation below, not read from source.
+DERIVED_INT = ["precip_reported"]
 TARGET = "high_demand"
 
 # Read but never used as features: the label is derived from these, so they are
@@ -107,6 +109,20 @@ def main() -> int:
     )
     p.add_argument("--quantile", type=float, default=0.75,
                    help="Within-county therms quantile above which a month is 'high demand'")
+    p.add_argument(
+        "--no-calendar",
+        action="store_true",
+        help="Drop obs_month / season / is_heating_season. Forces the model to use "
+             "WEATHER instead of the calendar. Measured: AUC 0.92 -> 0.83, and the "
+             "0.83 is the honest number (see --deseasonalize for why).",
+    )
+    p.add_argument(
+        "--deseasonalize",
+        action="store_true",
+        help="Rank therms within county AND month-of-year, so the label asks 'was this "
+             "January unusual for this county's Januaries?'. Removes the trivial "
+             "seasonal signal and makes it a real weather-anomaly problem.",
+    )
     args = p.parse_args()
 
     session = boto3.Session(profile_name=args.profile, region_name=args.region)
@@ -137,8 +153,33 @@ def main() -> int:
 
     # ---- label: top-quartile therms WITHIN each county ---------------------
     # Rank inside the county so the model cannot win by memorising county size.
-    county_rank = df.groupby("county_key")["total_therms"].rank(pct=True)
-    df[TARGET] = (county_rank > args.quantile).astype(int)
+    #
+    # DEFAULT (--deseasonalize off) ranks within county only. Be aware what that
+    # produces: gas demand is overwhelmingly seasonal, so a county's top-quartile
+    # months ARE its winter months, and the calendar nearly determines the label.
+    # Measured on this data, the resulting model is 92% a calendar lookup:
+    #
+    #     all features      AUC 0.9235   season_Winter importance 0.705
+    #                                    obs_month     importance 0.216
+    #     calendar only     AUC 0.9043
+    #     weather only      AUC 0.8298
+    #
+    # That 0.92 is not leakage -- the month is legitimately known at prediction
+    # time -- but it is a degenerate task. The model learned "winter is cold and
+    # people heat their homes", which is true and teaches nothing.
+    #
+    # --deseasonalize ranks within county AND month-of-year instead, so the
+    # question becomes "was THIS January unusual for this county's Januaries?".
+    # That strips out the seasonal gimme and leaves a genuine weather-anomaly
+    # problem. Expect a much lower, much more interesting score.
+    if args.deseasonalize:
+        rank = df.groupby(["county_key", "obs_month"])["total_therms"].rank(pct=True)
+        print("label: deseasonalised (ranked within county AND month-of-year)")
+    else:
+        rank = df.groupby("county_key")["total_therms"].rank(pct=True)
+        print("label: ranked within county (seasonal; the calendar will dominate "
+              "-- see --deseasonalize)")
+    df[TARGET] = (rank > args.quantile).astype(int)
     print(f"positive rate: {df[TARGET].mean():.4f}  (target ~{1 - args.quantile:.2f})")
 
     # The group a row belongs to, for an honest split. One county-month is one
@@ -152,12 +193,39 @@ def main() -> int:
     # Drop the label source NOW, before it can leak into the feature matrix.
     df = df.drop(columns=LABEL_SOURCE + ["county_key", "obs_year"])
 
+    # ---- missing precipitation ---------------------------------------------
+    # GHCN precipitation is missing for ~47% of California station-days: plenty
+    # of stations report temperature but not rainfall. A null here means "not
+    # measured", NOT "no rain", so we must not silently treat it as zero and we
+    # must not throw the row away either -- dropping half the dataset to keep
+    # one optional feature is a terrible trade.
+    #
+    # Standard fix: impute, and add an indicator so the model can tell "dry day"
+    # apart from "no gauge". The indicator is the part people forget, and
+    # without it the imputed zeros are indistinguishable from real zeros.
+    n_missing = int(df["precip_mm"].isna().sum())
+    if n_missing:
+        print(f"precip_mm missing on {n_missing:,} rows ({n_missing / len(df) * 100:.1f}%)"
+              f" -> imputing 0 + adding precip_reported flag")
+    df["precip_reported"] = df["precip_mm"].notna().astype(int)
+    df["precip_mm"] = df["precip_mm"].fillna(0.0)
+
+    # Drop whatever nulls remain BEFORE sampling. Sampling first and dropping
+    # afterwards means --sample is a lie: asking for 150,000 rows quietly
+    # returned 79,485 because the drop happened second. Same class of mistake as
+    # filtering after a shuffle instead of before it -- order decides the result.
+    before = len(df)
+    df = df.dropna()
+    group = group.loc[df.index]
+    if len(df) < before:
+        print(f"dropped {before - len(df):,} rows still carrying nulls")
+
     # Sample for cheap/fast training (still > 100k).
     if len(df) > args.sample:
         idx = df.sample(n=args.sample, random_state=42).index
         df = df.loc[idx]
         group = group.loc[idx]
-        print(f"sampled rows: {len(df):,}")
+    print(f"rows for modelling: {len(df):,}")
 
     # One-hot encode categoricals; cast bool to int. Keep label as the FIRST
     # column (the convention SageMaker built-in algorithms expect, and easy for
@@ -170,11 +238,11 @@ def main() -> int:
     bool_cols = df.select_dtypes(include="bool").columns
     df[bool_cols] = df[bool_cols].astype(int)
 
-    before = len(df)
-    df = df.dropna()
-    group = group.loc[df.index]
-    if len(df) < before:
-        print(f"dropped {before - len(df):,} rows with nulls")
+    if args.no_calendar:
+        cal = [c for c in df.columns
+               if c == "obs_month" or c == "is_heating_season" or c.startswith("season_")]
+        df = df.drop(columns=cal)
+        print(f"--no-calendar: dropped {cal}")
 
     label = df.pop(TARGET)
     df.insert(0, TARGET, label)
