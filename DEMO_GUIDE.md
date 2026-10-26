@@ -312,3 +312,66 @@ Two gotchas it exists to catch:
 not your fault. `TEST_LOG.md` holds every real number from a verified run — if
 a job dies, switch to the log and talk through what it produced. Nobody minds,
 as long as you are open that you're showing a recorded result.
+
+---
+
+## Two Windows/AWS-CLI traps that will bite you
+
+Both of these cost real debugging time during development, and neither produces
+an obvious error message. Worth knowing before you troubleshoot live.
+
+### 1. Git Bash rewrites paths that start with `/`
+
+Any AWS command taking a log group fails from Git Bash, because MSYS converts
+`/aws/lambda/...` into a Windows path before the CLI ever sees it:
+
+```
+InvalidParameterException: Value at 'logGroupName' failed to satisfy constraint:
+Member must satisfy regular expression pattern: [\.\-_/#A-Za-z0-9]+
+```
+
+The fix is one export:
+
+```bash
+export MSYS_NO_PATHCONV=1
+aws logs tail /aws/lambda/roi-smdemo-gas-canvas-reaper --profile roitraining --region us-east-1
+```
+
+PowerShell is unaffected.
+
+### 2. `--max-items` adds a pagination token to `--output text`
+
+This looks like it returns one value and does not:
+
+```bash
+$ aws logs describe-log-streams ... --max-items 1 \
+    --query "logStreams[0].lastEventTimestamp" --output text
+1793033003343
+None            # <-- the pagination token, on its own line
+```
+
+Anything doing arithmetic on that output breaks, and the error points at the
+arithmetic rather than the cause. Use the API's own `--limit` instead, and
+strip Windows CRLF while you are there:
+
+```bash
+aws logs describe-log-streams ... --limit 1 \
+  --query "logStreams[0].lastEventTimestamp" --output text | head -1 | tr -dc '0-9'
+```
+
+### Checking the cost guard is alive
+
+```bash
+export MSYS_NO_PATHCONV=1
+aws logs tail /aws/lambda/roi-smdemo-gas-canvas-reaper \
+  --profile roitraining --region us-east-1 --since 2h
+```
+
+Expect one line per region per run:
+
+```
+[us-east-1] swept 1 domain(s), 0 app(s), 0 of type ['Canvas']
+[us-east-2] no domains to watch
+```
+
+Silence means it has not run. The schedule is hourly.
