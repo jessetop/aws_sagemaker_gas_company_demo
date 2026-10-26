@@ -213,17 +213,54 @@ Then the last line:
 ---
 
 ## Demo 12 — Model Monitor + Model Card (5 min)
-**Module 5, Monitoring** · **Requires the morning endpoint**
+**Module 5, Monitoring** · ✅ **verified**
+
+### Two ways to give this. Pick before class.
+
+| | Endpoint? | Cost | You can show |
+|---|---|---|---|
+**A. Artifacts only** (recommended) | none | **$0** | captured records, Model Card |
+**B. Live endpoint** | yes, all day | ~$1/day | the above + an InService endpoint |
+
+**Option A works because the captured records and the Model Card already exist
+and outlive the endpoint.** They are sitting in S3 right now from a verified
+run. You lose only the ability to point at a live endpoint in the console --
+everything you actually *talk about* is still there.
+
+If you want Option B, start it in the morning:
+
+```bash
+python 07-deployment/monitor_demo_endpoint.py
+```
+
+> 🔴 **It bills ~$0.13/hr until deleted, and the Canvas reaper does NOT catch
+> endpoints.** Teardown is manual:
+> ```bash
+> python 07-deployment/monitor_demo_endpoint.py --delete
+> ```
 
 ### Where to go
-1. **Inference → Endpoints** → `roi-smdemo-gas-monitor` (InService)
-2. Open it → **Data capture** section → the S3 path
-   (`s3://roi-smdemo-029331796573-us-east-1/ml/gas/datacapture`)
-3. S3 → `ml/gas/datacapture/roi-smdemo-gas-monitor/` → open a captured JSONL record
+**S3 →** `ml/gas/datacapture/roi-smdemo-gas-monitor/AllTraffic/2026/10/26/23/`
+→ open any `.jsonl`
 
-### What you're looking at
-Captured live traffic: the input row, the prediction, and a timestamp — written
-for every request because capture is set to 100%.
+(Option B only: first show **Inference → Endpoints → `roi-smdemo-gas-monitor`
+→ Data capture**, so they see where the path comes from.)
+
+### What you're looking at — a real captured record
+```
+input  : 240.5,0.0,0.0,1.0,9.0,0.0,31.1,68.99,10.0,21.1,1.0,...
+  type : text/csv
+output : 0.05597794607887812
+time   : 2026-10-26T23:49:33Z
+```
+
+Three JSONL files, ~50 KB, one line per inference — the input row, the
+prediction, and a timestamp, written for **every** request because capture is
+set to 100%.
+
+> *"Six percent. That's what the model said about that station-day, and it's
+> written down forever with the exact inputs that produced it. That's the
+> foundation of monitoring: you cannot detect drift you never recorded."*
 
 > *"Model Monitor doesn't watch your model. It watches your DATA. It builds a
 > statistical baseline from your training set, then compares what's actually
