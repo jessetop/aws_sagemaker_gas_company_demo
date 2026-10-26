@@ -1,0 +1,197 @@
+{
+  "metadata": {
+    "version": 1,
+    "disable_limits": false,
+    "instance_type": "ml.m5.4xlarge"
+  },
+  "nodes": [
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000001",
+      "type": "SOURCE",
+      "operator": "sagemaker.s3_source_0.1",
+      "parameters": {
+        "dataset_definition": {
+          "__typename": "S3CreateDatasetDefinitionOutput",
+          "datasetSourceType": "S3",
+          "name": "ghcn_tmax_2024",
+          "description": null,
+          "s3ExecutionContext": {
+            "__typename": "S3ExecutionContext",
+            "s3Uri": "s3://roi-smdemo-029331796573-us-east-1/raw/observations/YEAR=2024/ELEMENT=TMAX/",
+            "s3ContentType": "parquet",
+            "s3HasHeader": true
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "default",
+          "sampling": {
+            "sampling_method": "sample_by_limit",
+            "limit_rows": 50000
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000002",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.infer_and_cast_type_0.1",
+      "parameters": {},
+      "trained_parameters": {
+        "schema": {
+          "ID": "string",
+          "DATE": "string",
+          "DATA_VALUE": "long",
+          "M_FLAG": "string",
+          "Q_FLAG": "string",
+          "S_FLAG": "string",
+          "OBS_TIME": "string"
+        }
+      },
+      "inputs": [
+        {
+          "name": "default",
+          "node_id": "a1000000-0000-4000-8000-000000000001",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [{ "name": "default" }]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000003",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.handle_missing_0.1",
+      "parameters": {
+        "operator": "Drop missing",
+        "drop_missing_parameters": {
+          "dimension": "Drop Rows",
+          "input_column": ["ID", "DATE", "DATA_VALUE"]
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "a1000000-0000-4000-8000-000000000002",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [{ "name": "default" }]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000004",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.manage_columns_0.1",
+      "parameters": {
+        "operator": "Rename column",
+        "rename_column_parameters": {
+          "input_column": "DATA_VALUE",
+          "new_name": "value_tenths_c"
+        }
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "a1000000-0000-4000-8000-000000000003",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [{ "name": "default" }]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000005",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.custom_pandas_0.1",
+      "parameters": {
+        "code": "# Table is available as variable `df`\n# GHCN stores temperature as an INTEGER in TENTHS of a degree C.\n# 390 means 39.0 C. Forget this and every number is 10x wrong.\ndf['temp_max_c'] = df['value_tenths_c'] / 10.0\n\n# GHCN DATE is the STRING \"20240115\", not a date. Parse it explicitly.\nimport pandas as pd\ndf['obs_date'] = pd.to_datetime(df['DATE'].astype(str), format='%Y%m%d', errors='coerce')\n\n# Q_FLAG is populated ONLY when a reading failed quality control,\n# so \"good data\" means the flag is empty.\ndf = df[df['Q_FLAG'].isna() | (df['Q_FLAG'].astype(str).str.strip() == '')]\n"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "a1000000-0000-4000-8000-000000000004",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [{ "name": "default" }]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000006",
+      "type": "SOURCE",
+      "operator": "sagemaker.s3_source_0.1",
+      "parameters": {
+        "dataset_definition": {
+          "__typename": "S3CreateDatasetDefinitionOutput",
+          "datasetSourceType": "S3",
+          "name": "ghcnd_stations_ca.csv",
+          "description": null,
+          "s3ExecutionContext": {
+            "__typename": "S3ExecutionContext",
+            "s3Uri": "s3://roi-smdemo-029331796573-us-east-1/raw/stations/ghcnd_stations_ca.csv",
+            "s3ContentType": "csv",
+            "s3HasHeader": true,
+            "s3FieldDelimiter": ","
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "default",
+          "sampling": {
+            "sampling_method": "sample_by_limit",
+            "limit_rows": 50000
+          }
+        }
+      ]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000007",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.infer_and_cast_type_0.1",
+      "parameters": {},
+      "trained_parameters": {
+        "schema": {
+          "station_id": "string",
+          "latitude": "float",
+          "longitude": "float",
+          "elevation_m": "float",
+          "state": "string",
+          "station_name": "string"
+        }
+      },
+      "inputs": [
+        {
+          "name": "default",
+          "node_id": "a1000000-0000-4000-8000-000000000006",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [{ "name": "default" }]
+    },
+    {
+      "node_id": "a1000000-0000-4000-8000-000000000008",
+      "type": "TRANSFORM",
+      "operator": "sagemaker.spark.join_tables_0.1",
+      "name": "joined_to_stations",
+      "parameters": {
+        "left_column": "ID",
+        "right_column": "station_id",
+        "join_type": "inner"
+      },
+      "inputs": [
+        {
+          "name": "df",
+          "node_id": "a1000000-0000-4000-8000-000000000005",
+          "output_name": "default"
+        },
+        {
+          "name": "df",
+          "node_id": "a1000000-0000-4000-8000-000000000007",
+          "output_name": "default"
+        }
+      ],
+      "outputs": [{ "name": "default" }]
+    }
+  ]
+}
