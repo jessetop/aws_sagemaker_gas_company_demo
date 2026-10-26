@@ -1,5 +1,5 @@
 """
-A full, end-to-end SageMaker Pipeline for the taxi demo — a "real" ML DAG with a
+A full, end-to-end SageMaker Pipeline for the gas-demand demo — a "real" ML DAG with a
 quality gate, bias + explainability, and conditional model registration.
 
 DAG:
@@ -65,6 +65,7 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args
 
 
@@ -107,19 +108,26 @@ def _patch_repack_launcher_lf():
 
 _patch_repack_launcher_lf()
 
-PIPELINE_NAME = "roi-smdemo-taxi-pipeline"
-MODEL_PACKAGE_GROUP = "roi-smdemo-taxi-models"
-MODEL_NAME = "roi-smdemo-pipeline-model"
+PIPELINE_NAME = config.resource("pipeline")
+MODEL_PACKAGE_GROUP = config.resource("models")
+MODEL_NAME = config.resource("pipeline-model")
 
-LABEL = "high_tip"
+# MUST stay in lockstep with FEATURES in 08-pipelines/preprocess.py. The schema
+# is fixed and un-one-hot-encoded precisely so Clarify can declare headers.
+LABEL = "high_demand"
 FEATURES = [
-    "trip_distance", "trip_duration_min", "trip_speed_mph", "pickup_hour",
-    "passenger_count", "fare_amount", "is_airport_trip",
+    "temp_max_c", "temp_min_c", "temp_mean_f", "temp_range_c",
+    "precip_mm", "precip_reported", "hdd65", "elevation_m",
+    "obs_month", "is_weekend", "is_heating_season",
 ]
 HEADERS = [LABEL] + FEATURES
-FACET = "is_airport_trip"
-# A representative feature row (no label) used as the SHAP baseline.
-SHAP_BASELINE = [[2.0, 12.0, 12.0, 14, 1, 12.0, 0]]
+# Bias facet: does the model behave differently in the heating season? For a gas
+# utility that is the question that matters -- a demand model that is only
+# accurate half the year fails exactly when you need it.
+FACET = "is_heating_season"
+# A representative feature row (no label) used as the SHAP baseline: a mild
+# spring day at a low-elevation station.
+SHAP_BASELINE = [[20.0, 10.0, 59.0, 10.0, 0.0, 1, 6.0, 100.0, 4, 0, 0]]
 
 
 def main() -> int:
@@ -140,7 +148,7 @@ def main() -> int:
     )
     proc_args = processor.run(
         code="08-pipelines/preprocess.py",
-        inputs=[ProcessingInput(source=f"s3://{b}/raw/trips/", destination="/opt/ml/processing/input")],
+        inputs=[ProcessingInput(source=f"s3://{b}/processed/visual-etl/", destination="/opt/ml/processing/input")],
         outputs=[
             ProcessingOutput(output_name="train", source="/opt/ml/processing/output/train", destination=f"s3://{b}/pipeline/train"),
             ProcessingOutput(output_name="validation", source="/opt/ml/processing/output/validation", destination=f"s3://{b}/pipeline/validation"),

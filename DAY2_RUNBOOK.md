@@ -218,7 +218,8 @@ Then the last line:
 ### Where to go
 1. **Inference → Endpoints** → `roi-smdemo-gas-monitor` (InService)
 2. Open it → **Data capture** section → the S3 path
-3. S3 → `datacapture/` → open a captured JSONL record
+   (`s3://roi-smdemo-029331796573-us-east-1/ml/gas/datacapture`)
+3. S3 → `ml/gas/datacapture/roi-smdemo-gas-monitor/` → open a captured JSONL record
 
 ### What you're looking at
 Captured live traffic: the input row, the prediction, and a timestamp — written
