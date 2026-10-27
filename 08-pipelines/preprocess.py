@@ -7,7 +7,7 @@ train/validation/test CSVs (label first column) to the output channels.
 
 WHY IT READS `processed/`, NOT `raw/`
 ------------------------------------
-The taxi version of this file re-derived the whole transformation pipeline in
+An earlier version of this file re-derived the whole transformation pipeline in
 pandas, duplicating logic that already lived in the Spark module. That is how
 the series ended up with two sources of truth that could silently drift -- the
 README claimed one canonical pipeline while this file quietly reimplemented it.

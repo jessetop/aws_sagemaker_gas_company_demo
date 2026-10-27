@@ -10,9 +10,9 @@
 #  - piping the ECR password to `docker login --password-stdin` corrupts it on 5.1,
 #    so we pass it via -p (the standard reliable pattern on Windows).
 param(
-    [string]$Account = "029331796573",
+    [string]$Account = "000000000000",
     [string]$Region  = "us-east-1",
-    [string]$Profile = "roitraining",
+    [string]$Profile = "default",
     [string]$Repo    = "roi-smdemo-custom-train",
     [string]$Tag     = "latest"
 )

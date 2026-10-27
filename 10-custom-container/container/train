@@ -81,7 +81,7 @@ def main() -> None:
     val_df = _read_channel("validation")
     print(f"[train] loaded train={train_df.shape} validation={val_df.shape}", flush=True)
 
-    # Column 0 is the label (high_tip); the rest are features.
+    # Column 0 is the label (high_demand); the rest are features.
     y_train, X_train = train_df.iloc[:, 0], train_df.iloc[:, 1:]
     y_val, X_val = val_df.iloc[:, 0], val_df.iloc[:, 1:]
 

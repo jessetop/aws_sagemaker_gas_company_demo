@@ -9,9 +9,9 @@ and tracks trials in managed MLflow (see WALKTHROUGH.md).
 Cost control (Kiro Req 6.4): max_jobs=4, max_parallel_jobs=2, cheapest instance.
 
 Usage:
-    python launch_tuning.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-1
+    python launch_tuning.py --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --profile default --region us-east-1
 """
 
 import argparse

@@ -31,8 +31,8 @@ conf() {
 
 [ -f "$ENV_FILE" ] || echo "WARNING: demo.env not found at $ENV_FILE - using built-in defaults." >&2
 
-ACCOUNT="${ACCOUNT:-$(conf SMDEMO_ACCOUNT 029331796573)}"
-PROFILE="${PROFILE:-$(conf SMDEMO_PROFILE roitraining)}"
+ACCOUNT="${ACCOUNT:-$(conf SMDEMO_ACCOUNT 000000000000)}"
+PROFILE="${PROFILE:-$(conf SMDEMO_PROFILE default)}"
 REGION="${REGION:-$(conf SMDEMO_REGION us-east-1)}"
 BUCKET="${BUCKET:-$(conf SMDEMO_BUCKET "roi-smdemo-${ACCOUNT}-${REGION}")}"
 PREFIX="${PREFIX:-$(conf SMDEMO_PREFIX roi-smdemo-gas)}"

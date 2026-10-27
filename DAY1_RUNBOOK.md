@@ -40,9 +40,9 @@ Then note these down — you'll need them in the URL bar all day:
 |---|---|
 **Studio domain** | `d-nvvqokjr2qep` |
 **Studio URL** | https://d-nvvqokjr2qep.studio.us-east-1.sagemaker.aws |
-**Bucket** | `roi-smdemo-029331796573-us-east-1` |
+**Bucket** | `YOUR-BUCKET-NAME` |
 **Region** | us-east-1 (everything; don't let the console drift) |
-**Profile** | `roitraining` |
+**Profile** | `default` |
 
 > ⚠️ **Check the region selector in the console says N. Virginia before every
 > demo.** The console remembers the last region you used, and every artifact
@@ -86,7 +86,7 @@ Draw this on the board and leave it up all day. Every demo refers back to it.
 1. Open **https://d-nvvqokjr2qep.studio.us-east-1.sagemaker.aws**
 2. Launch the **`roi-smdemo-gas-user`** profile → Studio opens.
 3. Walk the left nav once, slowly. *"Everything we touch today is in here."*
-4. New tab → **S3 console** → bucket `roi-smdemo-029331796573-us-east-1`
+4. New tab → **S3 console** → bucket `YOUR-BUCKET-NAME`
 
 ### What you'll see, and what to say
 Open `raw/` and point at the four prefixes:
@@ -134,7 +134,7 @@ Then open `processed/` and show `obs_year=`/`obs_month=` partitions.
 ### Where to go
 1. Studio → **Canvas** (left nav) → **Run Canvas**, wait for it to come up
 2. **Data Wrangler** → **Import data** → **Amazon S3**
-3. Navigate to `roi-smdemo-029331796573-us-east-1/raw/observations/`
+3. Navigate to `YOUR-BUCKET-NAME/raw/observations/`
 4. Select a `YEAR=2024/ELEMENT=TMAX` parquet file → **Import**
 
 ### "Here's how you make it"
@@ -202,7 +202,7 @@ Then work through `02-processing/pyspark-deep-dive/gas_spark_analysis.py`.
 ### (1) Partition pruning — 60 seconds
 
 ```python
-BUCKET = "roi-smdemo-029331796573-us-east-1"
+BUCKET = "YOUR-BUCKET-NAME"
 obs = spark.read.parquet(f"s3://{BUCKET}/raw/observations/")
 obs.filter((obs.YEAR == 2024) & (obs.ELEMENT == "TMAX")).explain(mode="formatted")
 ```

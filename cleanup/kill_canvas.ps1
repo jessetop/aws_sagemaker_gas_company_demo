@@ -9,7 +9,7 @@
 #   pwsh cleanup/kill_canvas.ps1 -WhatIf         # list only, delete nothing
 #
 param(
-    [string]$Profile = "roitraining",
+    [string]$Profile = "default",
     [string[]]$Region = @("us-east-1", "us-east-2"),
     [switch]$All,
     [switch]$WhatIf

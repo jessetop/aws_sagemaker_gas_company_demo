@@ -3,16 +3,16 @@ A full, end-to-end SageMaker Pipeline for the gas-demand demo — a "real" ML DA
 quality gate, bias + explainability, and conditional model registration.
 
 DAG:
-  1. PreprocessTaxiData       (Processing)   ingest raw parquet -> clean -> split
+  1. PreprocessGasData       (Processing)   ingest raw parquet -> clean -> split
   2. DataBiasCheck            (Clarify)      pre-training bias on the facet
-  3. TrainTaxiModel           (Training)     custom train.py on the splits
+  3. TrainGasModel           (Training)     custom train.py on the splits
   4. EvaluateModel            (Processing)   score test split -> evaluation.json
   5. CheckAUC                 (Condition)    only register if AUC >= threshold
         if passed:
-  6.   CreateTaxiModel        (Model)        package the trained artifact
+  6.   CreateGasModel        (Model)        package the trained artifact
   7.   ModelBiasCheck         (Clarify)      post-training bias
   8.   ModelExplainabilityCheck(Clarify)     SHAP feature attributions
-  9.   RegisterTaxiModel      (RegisterModel) versioned + metrics + drift baselines
+  9.   RegisterGasModel      (RegisterModel) versioned + metrics + drift baselines
 
 We **upsert** the definition (create/update only — free, no compute). Run it live
 with --start; each step is a short, cheap job. Clarify steps use skip_check=True +
@@ -23,9 +23,9 @@ model checks can reference it; if you re-run, delete that model first (the clean
 script does).
 
 Usage:
-    python build_pipeline.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-1 [--start]
+    python build_pipeline.py --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --profile default --region us-east-1 [--start]
 """
 
 import argparse
@@ -155,7 +155,7 @@ def main() -> int:
             ProcessingOutput(output_name="test", source="/opt/ml/processing/output/test", destination=f"s3://{b}/pipeline/test"),
         ],
     )
-    step_process = ProcessingStep(name="PreprocessTaxiData", step_args=proc_args)
+    step_process = ProcessingStep(name="PreprocessGasData", step_args=proc_args)
     out = step_process.properties.ProcessingOutputConfig.Outputs
     train_uri, val_uri, test_uri = (
         out["train"].S3Output.S3Uri, out["validation"].S3Output.S3Uri, out["test"].S3Output.S3Uri,
@@ -186,7 +186,7 @@ def main() -> int:
         hyperparameters={"learning-rate": 0.1, "n-estimators": 150, "max-depth": 3},
         metric_definitions=[{"Name": "validation:auc", "Regex": "validation_auc=([0-9\\.]+)"}],
     )
-    step_train = TrainingStep(name="TrainTaxiModel", step_args=estimator.fit({
+    step_train = TrainingStep(name="TrainGasModel", step_args=estimator.fit({
         "train": TrainingInput(train_uri, content_type="text/csv"),
         "validation": TrainingInput(val_uri, content_type="text/csv"),
     }))
@@ -218,7 +218,7 @@ def main() -> int:
         name=MODEL_NAME, sagemaker_session=pipe_sess,
         entry_point="train.py", source_dir="04-training",
     )
-    step_create_model = ModelStep(name="CreateTaxiModel", step_args=model.create(instance_type="ml.m5.large"))
+    step_create_model = ModelStep(name="CreateGasModel", step_args=model.create(instance_type="ml.m5.large"))
 
     # ---- 7) Model bias (post-training) -----------------------------------
     # ModelStep ignores the fixed name= and generates its own model name at run
@@ -270,7 +270,7 @@ def main() -> int:
         )
     )
     step_register = RegisterModel(
-        name="RegisterTaxiModel", estimator=estimator, model_data=model_artifact,
+        name="RegisterGasModel", estimator=estimator, model_data=model_artifact,
         content_types=["text/csv"], response_types=["text/csv"],
         inference_instances=["ml.m5.large"], transform_instances=["ml.m5.large"],
         model_package_group_name=MODEL_PACKAGE_GROUP, approval_status="Approved",

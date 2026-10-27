@@ -1,13 +1,13 @@
 """
-Module 7 (demo) — register the taxi model into the Model Registry with the Clarify
+Module 7 (demo) — register the model into the Model Registry with the Clarify
 bias + explainability reports attached, so the charts render NATIVELY in the console.
 
 Why: running Clarify as a standalone processing job leaves the SHAP/bias charts as
 HTML/JSON in S3 — the SageMaker console does NOT render them there. But if you attach
 the reports' analysis.json files to a registered model *version* (via ModelMetrics),
 Studio renders them under:
-    Model registry -> roi-smdemo-taxi-models -> [version] -> Explainability  (SHAP)
-    Model registry -> roi-smdemo-taxi-models -> [version] -> Bias            (bias metrics)
+    Model registry -> <prefix>-models -> [version] -> Explainability  (SHAP)
+    Model registry -> <prefix>-models -> [version] -> Bias            (bias metrics)
 
 Prereq: the fixed clarify_bias_explainability.py has been run so BOTH reports exist:
     s3://<bucket>/clarify/bias/analysis.json
@@ -15,7 +15,7 @@ Prereq: the fixed clarify_bias_explainability.py has been run so BOTH reports ex
 
 Usage:
     python 07-deployment/register_model_with_reports.py \
-        --profile roitraining --region us-east-1
+        --profile default --region us-east-1
 """
 
 import argparse
@@ -33,13 +33,39 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args, ACCOUNT, REGION, BUCKET, ROLE_ARN
 
-# NOTE: TRAIN_JOB names a specific past training job; MODEL_DATA follows the
-# configured region but the artifact only exists once module 4 has trained there.
-TRAIN_JOB = "roi-smdemo-taxi-train-2026-06-22-19-48-43-017"
-MODEL_DATA = f"s3://sagemaker-{REGION}-{ACCOUNT}/{TRAIN_JOB}/output/model.tar.gz"
-GROUP = "roi-smdemo-taxi-models"
+# Resolved at runtime by resolve_training_job(). These were pinned to a specific
+# training job name, which meant the script broke silently the moment that job
+# aged out of the account.
+TRAIN_JOB = None
+MODEL_DATA = None
+GROUP = config.resource("models")
+
+
+def resolve_training_job(sm_client) -> None:
+    """Point TRAIN_JOB / MODEL_DATA at the newest Completed training job.
+
+    No MaxResults alongside NameContains: SageMaker applies the limit to the
+    page it fetches BEFORE the name filter, so MaxResults=1 silently returns
+    nothing once an HPO trial is the newest job in the account.
+    """
+    global TRAIN_JOB, MODEL_DATA
+    jobs = sm_client.list_training_jobs(
+        NameContains=config.resource("train"), StatusEquals="Completed",
+        SortBy="CreationTime", SortOrder="Descending",
+    )["TrainingJobSummaries"]
+    if not jobs:
+        raise SystemExit(
+            f"no Completed training job matching {config.resource('train')}. "
+            f"Run 04-training/launch_training.py first."
+        )
+    TRAIN_JOB = jobs[0]["TrainingJobName"]
+    MODEL_DATA = sm_client.describe_training_job(
+        TrainingJobName=TRAIN_JOB
+    )["ModelArtifacts"]["S3ModelArtifacts"]
+    print(f"using training job {TRAIN_JOB}")
 
 
 def _exists(s3, key: str) -> bool:
@@ -60,6 +86,10 @@ def main() -> int:
     boto_sess = boto3.Session(profile_name=args.profile, region_name=args.region)
     sm_sess = sagemaker.Session(boto_session=boto_sess)
     s3 = boto_sess.client("s3")
+
+    # Find the model artifact first: this used to be a pinned job name, so the
+    # script broke silently once that job aged out of the account.
+    resolve_training_job(boto_sess.client("sagemaker"))
 
     # Both reports must exist or the corresponding console tab will be empty.
     for label, key in (("bias", args.bias_key), ("explainability", args.shap_key)):
@@ -98,7 +128,7 @@ def main() -> int:
         model_package_group_name=GROUP,
         approval_status="Approved",
         model_metrics=model_metrics,
-        description="Taxi high-tip classifier with Clarify bias + SHAP reports attached.",
+        description="Gas-demand classifier with Clarify bias + SHAP reports attached.",
     )
 
     arn = model_package.model_package_arn

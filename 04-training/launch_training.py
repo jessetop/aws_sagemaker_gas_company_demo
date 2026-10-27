@@ -12,9 +12,9 @@ channels, 3 hyperparameters, log streaming, model-artifact retrieval, and failur
 handling.
 
 Usage:
-    python launch_training.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-1
+    python launch_training.py --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --profile default --region us-east-1
 """
 
 import argparse

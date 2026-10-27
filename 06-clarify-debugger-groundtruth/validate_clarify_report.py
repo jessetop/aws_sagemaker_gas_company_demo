@@ -19,9 +19,9 @@ show the charts aren't magic:
 
 Usage:
     python 06-clarify-debugger-groundtruth/validate_clarify_report.py \
-        --profile roitraining --region us-east-1 \
+        --profile default --region us-east-1 \
         --clarify-prefix clarify \
-        --endpoint roi-smdemo-taxi-monitor --rows 3
+        --endpoint <prefix>-monitor --rows 3
 """
 
 import argparse
@@ -50,7 +50,7 @@ def main() -> int:
     p.add_argument("--clarify-prefix", default="clarify",
                    help="prefix holding analysis.json + explanations_shap/ "
                         "(use 'clarify/shap' after the output-path fix)")
-    p.add_argument("--endpoint", default="roi-smdemo-taxi-monitor")
+    p.add_argument("--endpoint", default=config.resource("monitor"))
     p.add_argument("--rows", type=int, default=3, help="rows for the additivity check")
     args = p.parse_args()
 
@@ -91,7 +91,7 @@ def main() -> int:
     print(f"CHECK 2 — additivity: expected_value + sum(local SHAP) == endpoint prediction")
     print(f"  expected_value (baseline) = {expected_value:.5f}")
     sample = _get_text(s3, SAMPLE_KEY).splitlines()
-    # sample col 0 is the label (high_tip); features start at col 1, in `feats` order.
+    # sample col 0 is the label (high_demand); features start at col 1, in `feats` order.
     print(f"  {'row':>4}{'sum(local)':>14}{'+baseline':>14}{'endpoint':>12}{'diff':>11}")
     for i in range(min(args.rows, n)):
         feat_row = sample[i + 1].split(",")[1:]          # drop label

@@ -6,9 +6,9 @@
 #   REPO=my-repo TAG=v1 ./build_and_push.sh
 set -euo pipefail
 
-ACCOUNT="${ACCOUNT:-029331796573}"
+ACCOUNT="${ACCOUNT:-000000000000}"
 REGION="${REGION:-us-east-1}"
-PROFILE="${PROFILE:-roitraining}"
+PROFILE="${PROFILE:-default}"
 REPO="${REPO:-roi-smdemo-custom-train}"
 TAG="${TAG:-latest}"
 

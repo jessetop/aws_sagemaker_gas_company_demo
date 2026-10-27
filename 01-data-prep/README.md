@@ -1,16 +1,34 @@
-# Module 1 — Interactive data prep: Data Wrangler vs Visual ETL
+<!-- Module reference. Demo narration lives in ../DEMOS.md. -->
 
-The same taxi cleaning/enrichment pipeline built two ways.
+# Module 1 — Interactive data prep
 
-| | Folder | Status |
-|---|---|---|
-| **Old way** — Data Wrangler (SageMaker AI / Studio Classic) | [`old-data-wrangler/`](old-data-wrangler/) | flow scaffold + walkthrough |
-| **New way** — Visual ETL (Unified Studio, Glue-backed) | [`new-visual-etl/`](new-visual-etl/) | **Glue job tested ✅** (2,858,161 rows out) |
+The same cleaning and enrichment two ways: Data Wrangler (low-code, inside Canvas) and Glue Visual ETL (the Glue-backed canvas).
 
-Both implement [`PIPELINE_SPEC.md`](../PIPELINE_SPEC.md). The headline live-demo
-moment is the **zone join (T14)** — show it as a Data Wrangler Join node, then as
-a Visual ETL Join node, then reveal the generated Spark.
+## Run
 
-**Teaching arc:** Data Wrangler = what learners may already know (interactive on a
-*sample*, export to a job). Visual ETL = where it's going (serverless Glue on the
-*full* dataset, governed inside a project). Same concepts, better home.
+```bash
+python 01-data-prep/old-data-wrangler/build_flows.py
+python 01-data-prep/new-visual-etl/run_glue_job.py --start --workers 4
+```
+
+- `build_flows.py` — renders the .flow templates with your bucket and uploads them
+- `run_glue_job.py` — ~10 min, ~$0.30; runs the full pipeline
+
+## Creates
+
+| | |
+|---|---|
+`processed/visual-etl/` | 1,668,673 rows, 25 columns, partitioned by year+month
+`flows/*.flow` | two Data Wrangler flows, importable from S3
+
+## Cost
+
+~$0.30 per Glue run. Data Wrangler means a billable Canvas session — `cleanup/kill_canvas.ps1` when done.
+
+## Notes
+
+The committed `.flow` files carry `YOUR-BUCKET-NAME` and are rendered by `build_flows.py` — Data Wrangler cannot read `demo.env`, so the paths inside a flow have to be literal. See **Demo 2** in DEMOS.md for the target-leakage arc the two flows exist to show.
+
+---
+
+Demo narration: [`../DEMOS.md`](../DEMOS.md) · Click-by-click: [`../DAY1_RUNBOOK.md`](../DAY1_RUNBOOK.md), [`../DAY2_RUNBOOK.md`](../DAY2_RUNBOOK.md) · Transform contract: [`../PIPELINE_SPEC.md`](../PIPELINE_SPEC.md)

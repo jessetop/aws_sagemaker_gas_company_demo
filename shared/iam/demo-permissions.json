@@ -14,8 +14,8 @@
         "s3:GetBucketAcl"
       ],
       "Resource": [
-        "arn:aws:s3:::roi-smdemo-029331796573-us-east-2",
-        "arn:aws:s3:::roi-smdemo-029331796573-us-east-2/*"
+        "arn:aws:s3:::YOUR-BUCKET-NAME",
+        "arn:aws:s3:::YOUR-BUCKET-NAME/*"
       ]
     },
     {

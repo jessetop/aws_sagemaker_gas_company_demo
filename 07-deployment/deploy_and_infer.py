@@ -12,9 +12,9 @@ one-click) — see WALKTHROUGH.md.
 Usage:
     python deploy_and_infer.py \
         --model-data s3://.../model.tar.gz \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --bucket roi-smdemo-029331796573-us-east-1 \
-        --profile roitraining --region us-east-1
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --bucket YOUR-BUCKET-NAME \
+        --profile default --region us-east-1
 """
 
 import argparse

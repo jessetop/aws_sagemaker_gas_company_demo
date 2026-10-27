@@ -63,25 +63,18 @@ For each row, the 30-second script is the same shape:
 
 ---
 
-## Where the demo artifacts actually are right now (this account)
+## Where the demo artifacts live
 
-Because the demos were run via the **SDK with a standalone role** (not yet inside a
-project), the live artifacts currently sit on the **SageMaker AI / Classic** side:
+`python shared/verify_demos.py` prints, for every artifact: whether it exists,
+its real row/record counts, the S3 URI or console path, and the command to
+rebuild it. That is authoritative; a table here would go stale the first time
+anything is re-run.
 
-| Resource | Visible in Classic / SageMaker AI console | In Unified Studio? |
-|---|---|---|
-| Training job `roi-smdemo-taxi-train-…` | ✅ Training jobs | only if re-run in a project |
-| HPO `roi-smdemo-taxi-hpo-260622-1253` | ✅ Tuning jobs | only if re-run in a project |
-| Model `roi-smdemo-taxi-model` | ✅ Models | only if published to the project |
-| Feature group `roi-smdemo-taxi-features` | ✅ Feature Store | only if created/published in a project |
-| Clarify `report.html` (`s3://…/clarify/`) | ✅ open from S3/Studio | attaches to model if run in-project |
-| Glue job `roi-smdemo-taxi-visual-etl` | Glue console | rebuild on the Visual ETL canvas |
-
-**This gap is itself the lesson**: the same artifact is a loose service resource in
-Classic and a governed project asset in Unified Studio. To populate the Unified
-Studio side for a live demo, re-run the in-project notebooks (Modules 02/04).
-
----
+The honest teaching point this section used to make is still worth keeping: a
+training job created by the SDK with a standalone role is a loose **service
+resource**. The same artifact created inside a Unified Studio project is a
+governed **project asset** with a catalog entry and lineage. Same API, same
+compute — different organising principle. That gap *is* the lesson.
 
 ## Accuracy caveat (read before teaching)
 

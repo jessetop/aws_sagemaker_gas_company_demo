@@ -1,18 +1,31 @@
-# Module 2 — Scalable processing: EMR Spark vs Unified Studio notebook
+<!-- Module reference. Demo narration lives in ../DEMOS.md. -->
 
-The same pipeline at full scale (~2.96M rows), run as raw Spark two ways.
+# Module 2 — Scalable processing
 
-| | Folder | Status |
-|---|---|---|
-| **Old way** — EMR Spark (EMR Serverless) | [`old-emr/`](old-emr/) | **job tested ✅** (2,858,161 rows out) |
-| **New way** — Unified Studio notebook | [`new-unified-studio/`](new-unified-studio/) | notebook + walkthrough |
+PySpark on **serverless** Spark. No EMR cluster: Glue Interactive Sessions bill per second with nothing to tear down.
 
-Both call the same [`shared/taxi_transforms.py`](../shared/taxi_transforms.py).
+## Run
 
-**Verified cross-engine:** identical output (2,858,161 rows, 20 cols) from Glue
-Spark 3.3 *and* EMR Spark 3.5 — after fixing a real `TIMESTAMP_NTZ` portability
-bug (see [`old-emr/WALKTHROUGH.md`](old-emr/WALKTHROUGH.md)). That gotcha is itself
-a teaching moment: managed runtimes differ; the unified experience pins them.
+```bash
+python 02-processing/pyspark-deep-dive/run_spark_analysis.py --start
+```
 
-**Teaching arc:** EMR = you own the app/submit/log plumbing. Unified Studio
-notebook = same engine and code, run interactively from a governed project.
+- `run_spark_analysis.py` — runs the analysis as a Glue job to verify it (~$0.07)
+
+## Creates
+
+| | |
+|---|---|
+`code/pyspark-deep-dive/` | the notebook and script, staged for JupyterLab
+
+## Cost
+
+~$0.07 for a 5-minute interactive session. `%idle_timeout 15` in the first cell is the only guard — the Canvas reaper does **not** catch Glue sessions.
+
+## Notes
+
+See [`pyspark-deep-dive/README.md`](pyspark-deep-dive/README.md) for the eight sections. The AWS lab already covers connecting Studio to an EMR cluster; this covers the DataFrame work the labs skip.
+
+---
+
+Demo narration: [`../DEMOS.md`](../DEMOS.md) · Click-by-click: [`../DAY1_RUNBOOK.md`](../DAY1_RUNBOOK.md), [`../DAY2_RUNBOOK.md`](../DAY2_RUNBOOK.md) · Transform contract: [`../PIPELINE_SPEC.md`](../PIPELINE_SPEC.md)

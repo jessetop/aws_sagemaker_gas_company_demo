@@ -3,7 +3,7 @@ Module 6B — SageMaker Debugger with REAL captured data (old way).
 
 The custom sklearn model (train.py) can't emit Debugger tensors — Debugger only
 natively hooks XGBoost / PyTorch / TF / MXNet. So the Debugger demo trains the
-SAME task (predict `high_tip`) on the SAME data with **built-in XGBoost**, which
+SAME task (predict `high_demand`) on the SAME data with **built-in XGBoost**, which
 auto-captures tensors with zero instrumentation. You get:
 
   * a real training/validation **loss curve** (metrics collection, per round)
@@ -80,7 +80,7 @@ def main() -> int:
         instance_count=1,
         instance_type=args.instance_type,
         sagemaker_session=sm_sess,
-        base_job_name="roi-smdemo-taxi-debugger",
+        base_job_name=config.resource("debugger"),
         hyperparameters={
             "objective": "binary:logistic",
             "num_round": str(args.num_round),

@@ -2,20 +2,20 @@
 Create a real **Visual ETL** flow (visual-node Glue job) so it renders on the
 Unified Studio / Glue Studio canvas — the thing to compare against Data Wrangler.
 
-Our other Glue job (`roi-smdemo-taxi-visual-etl`) is a *script* job, so it does NOT
+Our other Glue job (the one run by run_glue_job.py) is a *script* job, so it does NOT
 appear in the visual editor. A visual flow needs `CodeGenConfigurationNodes` — the
 JSON DAG the canvas reads. This builds a simple, recognizable flow:
 
-    S3 source (taxi trips) -> Drop Duplicates -> Drop Fields -> S3 target
+    S3 source (GHCN observations) -> Drop Duplicates -> Drop Fields -> S3 target
 
 It's tagged to the Unified Studio project so it shows up there, and it's
 deliberately simple ("drop dupes, drop fields") to mirror common Data Wrangler
 transforms for the side-by-side.
 
 Usage:
-    python create_visual_flow.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-1
+    python create_visual_flow.py --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --profile default --region us-east-1
 """
 
 import argparse
@@ -32,7 +32,7 @@ while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.d
 _sys.path.insert(0, _root)
 from shared.config import add_common_args
 
-JOB_NAME = "roi-smdemo-taxi-visual-flow"
+JOB_NAME = config.resource("visual-flow")
 # Tag to the user's Unified Studio project (Default_06222026_Domain).
 DZ_TAGS = {
     "AmazonDataZoneProject": "azjpw3giqinpux",
@@ -48,7 +48,7 @@ def build_nodes(bucket: str) -> dict:
     return {
         src: {
             "S3ParquetSource": {
-                "Name": "NYC Taxi Trips",
+                "Name": "GHCN Observations",
                 "Paths": [f"s3://{bucket}/raw/trips/"],
                 "Recurse": True,
             }

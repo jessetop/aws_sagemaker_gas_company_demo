@@ -49,8 +49,8 @@ function Resolve-Setting([string]$Flag, [string]$Key, [string]$Fallback) {
     return $Fallback
 }
 
-$Account = Resolve-Setting $null      "SMDEMO_ACCOUNT" "029331796573"
-$Profile = Resolve-Setting $Profile   "SMDEMO_PROFILE" "roitraining"
+$Account = Resolve-Setting $null      "SMDEMO_ACCOUNT" "000000000000"
+$Profile = Resolve-Setting $Profile   "SMDEMO_PROFILE" "default"
 $Region  = Resolve-Setting $Region    "SMDEMO_REGION"  "us-east-1"
 $Bucket  = Resolve-Setting $Bucket    "SMDEMO_BUCKET"  "roi-smdemo-$Account-$Region"
 $Prefix  = Resolve-Setting $Prefix    "SMDEMO_PREFIX"  "roi-smdemo-gas"

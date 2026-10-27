@@ -1,7 +1,7 @@
 # Module 6C — Ground Truth labeling (conceptual / not auto-tested)
 
-Ground Truth produces the labels you'd otherwise not have. Our taxi dataset already
-has the `high_tip` label (derived in the pipeline), so we teach Ground Truth as
+Ground Truth produces the labels you'd otherwise not have. Our dataset already
+has the `high_demand` label (derived in the pipeline), so we teach Ground Truth as
 "here's how you'd have *created* a label like this from unlabeled data." It isn't
 run live because labeling needs a human workforce — not a cheap unattended job.
 
@@ -9,7 +9,7 @@ run live because labeling needs a human workforce — not a cheap unattended job
 
 1. **Input manifest** in S3 — one JSON line per item to label:
    ```json
-   {"source-ref": "s3://.../trips/row-000123.json"}
+   {"source-ref": "s3://.../observations/row-000123.json"}
    ```
 2. **Labeling job** (`aws sagemaker create-labeling-job`) with:
    - a **task type** (image/text classification, bounding box, custom),
@@ -22,13 +22,13 @@ run live because labeling needs a human workforce — not a cheap unattended job
 Skeleton:
 ```bash
 aws sagemaker create-labeling-job \
-  --labeling-job-name roi-smdemo-taxi-label \
-  --label-attribute-name high_tip \
+  --labeling-job-name <prefix>-label \
+  --label-attribute-name high_demand \
   --input-config '{"DataSource":{"S3DataSource":{"ManifestS3Uri":"s3://.../manifest.jsonl"}}}' \
   --output-config '{"S3OutputPath":"s3://.../ground-truth/"}' \
-  --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
+  --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
   --human-task-config file://human-task-config.json \
-  --profile roitraining --region us-east-2
+  --profile default --region us-east-2
 ```
 
 ## New way — Unified Studio

@@ -17,7 +17,7 @@
           "description": null,
           "s3ExecutionContext": {
             "__typename": "S3ExecutionContext",
-            "s3Uri": "s3://roi-smdemo-029331796573-us-east-1/raw/observations/YEAR=2024/ELEMENT=TMAX/",
+            "s3Uri": "s3://YOUR-BUCKET-NAME/raw/observations/YEAR=2024/ELEMENT=TMAX/",
             "s3ContentType": "parquet",
             "s3HasHeader": true
           }
@@ -96,7 +96,7 @@
           "description": null,
           "s3ExecutionContext": {
             "__typename": "S3ExecutionContext",
-            "s3Uri": "s3://roi-smdemo-029331796573-us-east-1/raw/stations/ghcnd_stations_ca.csv",
+            "s3Uri": "s3://YOUR-BUCKET-NAME/raw/stations/ghcnd_stations_ca.csv",
             "s3ContentType": "csv",
             "s3HasHeader": true,
             "s3FieldDelimiter": ","

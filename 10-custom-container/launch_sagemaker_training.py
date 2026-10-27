@@ -12,7 +12,7 @@ runs `docker run <image> train`, and uploads /opt/ml/model to S3.
 
 Usage:
     python launch_sagemaker_training.py
-    python launch_sagemaker_training.py --image-uri 029331796573.dkr.ecr.us-east-1.amazonaws.com/roi-smdemo-custom-train:latest
+    python launch_sagemaker_training.py --image-uri 000000000000.dkr.ecr.us-east-1.amazonaws.com/roi-smdemo-custom-train:latest
 """
 
 import argparse
@@ -40,7 +40,7 @@ def main() -> int:
     add_common_args(p)
     p.add_argument("--image-uri", default=None, help="ECR image (defaults to the demo repo:latest)")
     p.add_argument("--instance-type", default="ml.m5.large")
-    p.add_argument("--prefix", default="ml/taxi")
+    p.add_argument("--prefix", default="ml/gas")
     args = p.parse_args()
 
     image_uri = args.image_uri or (

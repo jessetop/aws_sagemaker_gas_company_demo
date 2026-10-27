@@ -5,15 +5,15 @@
       "Sid": "AllowUnifiedStudioProjectRead",
       "Effect": "Allow",
       "Principal": {
-        "AWS": "arn:aws:iam::029331796573:role/service-role/AmazonSageMakerAdminIAMExecutionRole"
+        "AWS": "arn:aws:iam::000000000000:role/service-role/AmazonSageMakerAdminIAMExecutionRole"
       },
       "Action": [
         "s3:GetObject",
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::roi-smdemo-029331796573-us-east-2",
-        "arn:aws:s3:::roi-smdemo-029331796573-us-east-2/*"
+        "arn:aws:s3:::YOUR-BUCKET-NAME",
+        "arn:aws:s3:::YOUR-BUCKET-NAME/*"
       ]
     }
   ]

@@ -8,7 +8,7 @@
 #   DRY_RUN=1 ./cleanup/kill_canvas.sh          # list only, delete nothing
 set -uo pipefail
 
-PROFILE="${PROFILE:-roitraining}"
+PROFILE="${PROFILE:-default}"
 REGIONS="${REGIONS:-us-east-1 us-east-2}"
 if [[ "${ALL:-0}" == "1" ]]; then
   KILL_TYPES="Canvas JupyterLab KernelGateway RStudioServerPro RSession TensorBoard CodeEditor"

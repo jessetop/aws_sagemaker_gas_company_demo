@@ -14,9 +14,9 @@ Cost: one short processing job on the cheapest instance, then done.
 Usage:
     python clarify_bias_explainability.py \
         --model-name roi-smdemo-gas-model \
-        --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-1
+        --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --profile default --region us-east-1
 """
 
 import argparse

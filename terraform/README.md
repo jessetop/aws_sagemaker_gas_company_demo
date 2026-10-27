@@ -9,7 +9,7 @@ referenced by ID only.
 
 | Resource | Purpose |
 |---|---|
-| S3 bucket `roi-smdemo-029331796573-us-east-1` | In-region copy of the project dataset (data currently lives in the us-east-2 bucket). |
+| S3 bucket `YOUR-BUCKET-NAME` | In-region copy of the project dataset (data currently lives in the us-east-2 bucket). |
 | IAM policy on existing `roi-smdemo-exec-role` | Grants the demo exec role read/write on the new bucket. |
 | Lambda `roi-smdemo-canvas-reaper` + EventBridge rule | **Cost guard:** hourly, deletes idle Canvas apps so they can't bill ~$50/day. |
 
@@ -34,7 +34,7 @@ After apply, sync the data and populate (see repo root scripts):
 ../shared/sync_data_to_us_east_1.ps1
 
 # stage dataset + Feature Store group in us-east-1
-python ../00-setup/stage_dataset.py --bucket roi-smdemo-029331796573-us-east-1 --region us-east-1 --profile roitraining
+python ../00-setup/stage_dataset.py --bucket YOUR-BUCKET-NAME --region us-east-1 --profile default
 ```
 
 ## Canvas cost guard knobs (terraform.tfvars)

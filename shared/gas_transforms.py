@@ -224,7 +224,7 @@ def build_pipeline(
     #     an implicit cast. Spark 3.x under the CORRECTED time parser will
     #     return NULL for an unparseable string instead of raising, so a silent
     #     cast here would quietly delete rows. The same class of cross-engine
-    #     portability trap as the taxi series' TIMESTAMP_NTZ lesson — worth
+    #     portability trap as a direct timestamp cast across Spark versions — worth
     #     calling out in class.
     obs = obs.withColumn(
         "obs_date", F.to_date(F.col("obs_date_raw").cast("string"), "yyyyMMdd")
@@ -232,7 +232,7 @@ def build_pipeline(
 
     # T4. Quality filter. GHCN sets Q_FLAG only when a reading FAILED one of its
     #     quality-control checks, so "good data" means the flag is null/blank.
-    #     This is the gas-series analogue of the taxi pipeline's "revenue trips
+    #     This is the analogue of a "keep only real transactions
     #     only" filter: drop records the source itself distrusts.
     obs = obs.filter(
         F.col("quality_flag").isNull() | (F.trim(F.col("quality_flag")) == "")
@@ -408,7 +408,7 @@ def add_ml_label(df: DataFrame) -> DataFrame:
     county-month shares one label. Do NOT split train/test randomly or the same
     county-month lands on both sides and the score is inflated. Split by
     county-month (see shared/prepare_ml_data.py). This is the gas series'
-    equivalent of the taxi series' cash-tip leak, and it is a better lesson.
+    classic leak-by-aggregation, and a better lesson than a contrived one.
     """
     by_county = Window.partitionBy("county_key").orderBy(F.col("total_therms").asc())
     return df.withColumn("_pct", F.percent_rank().over(by_county)).withColumn(

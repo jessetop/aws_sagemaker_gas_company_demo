@@ -1,14 +1,31 @@
-# Module 4 — Training: SageMaker AI Estimator vs Unified Studio
+<!-- Module reference. Demo narration lives in ../DEMOS.md. -->
 
-Train the taxi `high_tip` classifier as a managed job — same custom `train.py`,
-launched two ways.
+# Module 4 — Custom training jobs
 
-| | Path | Status |
-|---|---|---|
-| Custom training script (Kiro Req 2) | [`train.py`](train.py) | — |
-| **Old way** — SDK estimator | [`launch_training.py`](launch_training.py) | live-testable |
-| **New way** — project notebook | [`new-unified-studio/train_notebook.ipynb`](new-unified-studio/train_notebook.ipynb) | walkthrough |
+A scikit-learn GradientBoosting classifier launched through the SageMaker Python SDK. `train.py` doubles as the inference entry point.
 
-Punchline: the **CreateTrainingJob API is identical** old/new; Unified Studio adds
-the role, bucket, tracking, and lineage for free. See [`WALKTHROUGH.md`](WALKTHROUGH.md).
-`train.py` also provides `model_fn`/`predict_fn` reused by [Module 7](../07-deployment/).
+## Run
+
+```bash
+python 04-training/launch_training.py
+```
+
+- `launch_training.py` — ~4 min, cents
+
+## Creates
+
+| | |
+|---|---|
+training job | `<prefix>-train-...`, with the model artifact in S3
+
+## Cost
+
+145 billable seconds on `ml.m5.large`.
+
+## Notes
+
+The whole SageMaker contract is three env vars and a print statement: `SM_CHANNEL_TRAIN`, `SM_MODEL_DIR`, and metrics as `name=value` on stdout. Read DEMOS.md **Demo 7** before quoting the AUC.
+
+---
+
+Demo narration: [`../DEMOS.md`](../DEMOS.md) · Click-by-click: [`../DAY1_RUNBOOK.md`](../DAY1_RUNBOOK.md), [`../DAY2_RUNBOOK.md`](../DAY2_RUNBOOK.md) · Transform contract: [`../PIPELINE_SPEC.md`](../PIPELINE_SPEC.md)

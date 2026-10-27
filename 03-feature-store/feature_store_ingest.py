@@ -13,9 +13,9 @@ Cost note: we ingest only a small sample and disable the online store by default
 online store, then delete the group promptly.
 
 Usage:
-    python feature_store_ingest.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-1 --rows 2000
+    python feature_store_ingest.py --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --profile default --region us-east-1 --rows 2000
 """
 
 import argparse
@@ -68,7 +68,7 @@ def main() -> int:
     # Feature Store needs a record-identifier and an event-time column.
     # Record identifier. Named for what this dataset actually is: one row per
     # station-day of weather joined to its county's monthly gas consumption.
-    # It was "trip_id" in the taxi original -- harmless to the code, but it sits
+    # A generic row id was "trip_id" here once -- harmless to the code, but it sits
     # in the console next to hdd65 and temp_max_c where a sharp student will
     # read it and quietly stop trusting the demo.
     df = df.reset_index().rename(columns={"index": "observation_id"})

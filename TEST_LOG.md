@@ -1,10 +1,10 @@
 # Live Test Log — what was actually run against the account
 
-Account `029331796573`, region **us-east-1**, profile `roitraining`. Resources
+Account `000000000000`, region **us-east-1**, profile `default`. Resources
 named `roi-smdemo-gas-*` and tagged `Project=sagemaker-unified-studio-demos`.
 
 > This log records only what was **executed**, with real numbers. Anything not
-> listed here has not been run. The taxi-era results this file used to contain
+> listed here has not been run. The earlier results this file used to contain
 > are in git history on `trunk`; they describe a different dataset in a
 > different region and none of them carry over.
 
@@ -112,7 +112,7 @@ HDD bucket distribution over 10 years of California station-days:
 - **Group structure in the label.** CEC consumption is monthly, so every daily
   row in a county-month shares one `high_demand` value. Splits must be by
   county-month, not random, or the score is inflated. This is the gas series'
-  equivalent of the taxi series' cash-tip leak, and a better lesson.
+  a classic leak-by-aggregation, and a better lesson than a contrived one.
 - **Many GHCN stations are precipitation-only.** T8 requires both `TMAX` and
   `TMIN`, which is why 3,241 stations over 10 years yield 1.67M usable
   station-days rather than ~7M. Still far above the 100k-sample requirement.
@@ -140,7 +140,7 @@ HDD bucket distribution over 10 years of California station-days:
 
 ### 🔴 The model does not work, and the 0.92 is why we know
 
-Training reported AUC **0.9235**, which is far above the taxi series' 0.61 and
+Training reported AUC **0.9235**, which was far higher than expected and
 should have been treated as suspicious immediately. It was. Ablation:
 
 | Feature set / label | AUC |
@@ -205,7 +205,7 @@ were found by the new multi-region sweep:
 |---|---|---|
 | us-east-1 | `sm-canvas-data-wrangler-emr-app-roi-smdemo-user` | 2026-07-07 |
 | us-east-2 | `sm-canvas-data-wrangler-emr-app-default-20260622T122252` | 2026-06-22 |
-| us-east-2 | `roi-smdemo-taxi-emr` (STOPPED) | — |
+| us-east-2 | a leftover EMR Serverless app (STOPPED) | — |
 
 None were billing — no pre-initialised capacity — but they persisted for months
 because the cleanup script only ever ran against one region and matched
@@ -213,12 +213,12 @@ because the cleanup script only ever ran against one region and matched
 app called `sm-canvas-data-wrangler-emr-app-<user-profile>`, which matching on
 our own prefix can never find. All three are now removed.
 
-Still present and harmless (metadata only, no cost): taxi-era experiments and
+Still present and harmless (metadata only, no cost): earlier experiments and
 model-package groups in both regions, plus two stray Canvas AutoML experiments.
 Worth clearing before class purely so the console you demo from looks tidy.
 
 ## Not yet run
 
 Modules 2–10 (EMR, Feature Store, training, tuning, Clarify/Debugger/Ground
-Truth, deployment, pipelines, Autopilot, custom container) still carry the taxi
+Truth, deployment, pipelines, Autopilot, custom container) still carried the old
 schema and have **not** been ported or executed against the gas dataset.

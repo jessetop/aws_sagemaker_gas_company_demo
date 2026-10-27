@@ -13,9 +13,9 @@ Rough cost with defaults below: ~$2-6, ~40-75 min. Unconstrained Autopilot can b
 $20-50+ over several hours — DON'T remove the caps for a class.
 
 Usage:
-    python launch_autopilot.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --profile roitraining --region us-east-1          # launch (no wait)
+    python launch_autopilot.py --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --profile default --region us-east-1          # launch (no wait)
     python launch_autopilot.py ... --leaderboard           # print ranking of a done job
 """
 

@@ -17,10 +17,10 @@ What it does:
 
 Usage:
     python 07-deployment/monitor_demo_endpoint.py \
-        --profile roitraining --region us-east-1
+        --profile default --region us-east-1
 
 Teardown when done (also printed at the end):
-    python 07-deployment/monitor_demo_endpoint.py --delete --profile roitraining --region us-east-1
+    python 07-deployment/monitor_demo_endpoint.py --delete --profile default --region us-east-1
 """
 
 import argparse
@@ -76,6 +76,8 @@ def resolve_training_job(sm_client) -> None:
     )["ModelArtifacts"]["S3ModelArtifacts"]
     print(f"using training job {TRAIN_JOB}")
     print(f"           artifact {MODEL_DATA}")
+
+
 PREFIX = "ml/gas"
 
 MODEL_NAME = config.resource("model-mon")
@@ -104,9 +106,9 @@ def _make_card(sm_client, metrics: dict) -> None:
             "model_name": MODEL_NAME,
             "model_description": (
                 "Binary classifier predicting whether a California county-month was a "
-                "result in a high tip (>20% of fare). Gradient-boosted trees "
-                "high gas-demand month, from station weather. GradientBoosting "
-                "(scikit-learn) trained on engineered weather features."
+                "high gas-demand month, from station weather alone. "
+                "GradientBoosting (scikit-learn) on engineered weather features: "
+                "heating degree days, temperature range, precipitation, elevation."
             ),
             "problem_type": "Binary classification",
             "algorithm_type": "Gradient boosting (scikit-learn GradientBoostingClassifier)",
@@ -116,7 +118,7 @@ def _make_card(sm_client, metrics: dict) -> None:
         },
         "intended_uses": {
             "purpose_of_model": (
-                "Teaching artifact for the SageMaker MLOps demo series — illustrates "
+                "Teaching artifact for the SageMaker demo series — illustrates "
                 "deployment, data capture, and model monitoring end to end."
             ),
             "intended_uses": (
@@ -124,9 +126,11 @@ def _make_card(sm_client, metrics: dict) -> None:
                 "card, and Model Monitor walkthroughs."
             ),
             "factors_affecting_model_efficiency": (
-                "Sensitive to heating degree days, month, station elevation and "
-                "passenger count. Trained on a single month of NYC TLC data; not "
-                "representative of other cities or seasons."
+                "Sensitive to heating degree days, calendar month and station elevation. "
+                "Trained on 2015-2024 California weather joined to CEC county "
+                "consumption; not representative of other states or climates. "
+                "Known limitation: the label is a county-MONTH aggregate while "
+                "features are a single station-DAY, so the grain does not match."
             ),
             "risk_rating": "Low",
             "explanations_for_risk_rating": (
@@ -171,9 +175,11 @@ def _make_card(sm_client, metrics: dict) -> None:
         ],
         "additional_information": {
             "ethical_considerations": (
-                "Tipping behavior can correlate with sensitive socio-economic factors. "
-                "For a real deployment, run SageMaker Clarify bias + attribution drift "
-                "monitors (see module 06) before and during production."
+                "Gas consumption correlates with housing stock, income and climate zone, so "
+                "a demand model can encode socio-economic structure. Clarify reports "
+                "a strong behavioural difference across the heating-season facet (see "
+                "module 06). Run bias and attribution-drift monitors before and "
+                "during any production use."
             ),
             "caveats_and_recommendations": (
                 "Demo model only. Enable Data Quality + Model Quality monitoring on the "

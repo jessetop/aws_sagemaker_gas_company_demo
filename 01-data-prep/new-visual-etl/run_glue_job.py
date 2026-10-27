@@ -1,7 +1,7 @@
 """
 Create and run the Visual-ETL-equivalent Glue job (Module 1, the "new way").
 
-The taxi version of this series created its Glue job ad hoc, which meant the
+An earlier version of this series created its Glue job ad hoc, which meant the
 one command that proves the pipeline works was not in the repo. This script is
 that missing piece: it uploads the job script plus the shared transform module,
 creates or updates the Glue job, optionally starts it, and tails the run to a

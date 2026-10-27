@@ -23,7 +23,7 @@ means nothing.
 2. THE THERMS COLUMNS ARE DROPPED. `total_therms`, `res_therms` and
    `nonres_therms` are what the label is computed FROM. Leaving any of them in
    the feature set lets the model read the answer off its own input -- the gas
-   equivalent of the taxi series' "cash trips always tip zero" leak, and much
+   same shape as any "the label is computed from this column" leak, and much
    easier to do by accident because the column names look innocent.
 
 GROUP STRUCTURE / SPLITTING (the real lesson here)

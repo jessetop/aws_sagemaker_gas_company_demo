@@ -10,10 +10,10 @@ Both are metadata operations — **no training compute** is launched. Run once t
 make Studio Classic look complete for a class.
 
 Usage:
-    python populate_studio_classic.py --bucket roi-smdemo-029331796573-us-east-1 \
-        --role-arn arn:aws:iam::029331796573:role/roi-smdemo-exec-role \
-        --model-data s3://sagemaker-us-east-1-029331796573/<train-job>/output/model.tar.gz \
-        --profile roitraining --region us-east-1
+    python populate_studio_classic.py --bucket YOUR-BUCKET-NAME \
+        --role-arn arn:aws:iam::000000000000:role/roi-smdemo-exec-role \
+        --model-data s3://sagemaker-us-east-1-000000000000/<train-job>/output/model.tar.gz \
+        --profile default --region us-east-1
 """
 
 import argparse
