@@ -177,7 +177,13 @@ roi-smdemo-gas-hpo-261026-1514-001-4138bb7d
 ---
 
 ## Demo 9 — Autopilot (5 min)
-**Wherever AutoML fits** · ✅ **verified**
+**Module 3 Model Development, slide 40** · ✅ **verified**
+
+> 🔴 **Read-only demo. Do not click Create AutoML job.** The completed job
+> cost **$9.26** — Autopilot picked `ml.r5.16xlarge` (~$4.84/hr) for each trial
+> and ran 10 in parallel. The caps in `launch_autopilot.py` limit the trial
+> count, not the instance size, and nothing can. The finished leaderboard below
+> is the demo; re-running it is another $9.
 
 ### Where to go
 **SageMaker AI console → Training → AutoML jobs** → `roi-smdemo-gas-autopilot`

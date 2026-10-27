@@ -428,8 +428,15 @@ the first."*
 ## Demo 9 — Autopilot / Canvas (5 min)
 
 **Slot:** Module 3 Model Development, slide 40 — the deck has its own Autopilot demo slot. Day 2.
-**Baked:** run `09-autopilot/launch_autopilot.py` ahead of time (not yet in the
-prebake list — it takes ~30 min).
+**Baked:** ✅ `roi-smdemo-gas-autopilot`, run 2026-10-26. Best candidate
+`WeightedEnsemble-L3-FULL`, accuracy **0.8800**, 10 candidates, target
+`high_demand`.
+
+> 🔴 **Do not re-run it live. One run is $9.26.** Autopilot picks its own
+> instance type for each trial — it chose `ml.r5.16xlarge` (~$4.84/hr) and ran
+> 10 of them in parallel. `max_candidates` caps the trial *count*, not the
+> instance size, and there is no parameter that does. This is the single most
+> expensive thing in the repo; the completed job is the demo.
 
 **The framing that lands:** Autopilot is the *engine*; there are three front
 doors — SDK (code), Studio UI (low-code), Canvas (no-code). Same ranked
@@ -497,7 +504,7 @@ Check before you commit to a demo in a running class.
 | 6 | Training | ✅ verified | ✅ | ✅ |
 | 7 | Experiments + metric arc | ✅ verified | ✅ baseline + 4 HPO trials | ✅ |
 | 8 | HPO | ✅ verified | ✅ `roi-smdemo-gas-hpo-261026-1514` | ✅ |
-| 9 | Autopilot | ✅ ported | not baked | ❌ |
+| 9 | Autopilot | ✅ verified | ✅ `roi-smdemo-gas-autopilot` | ✅ from artifact — never re-run live ($9.26) |
 | 10 | Clarify | ✅ ported | see `--status` | check |
 | 11 | Deployment | ✅ ported | live | ⚠️ run once first |
 
@@ -530,4 +537,5 @@ you into a class mistrusting a correct `--status`.
 3. **Port `08-pipelines/preprocess.py`** — makes Demo 4 a real Processing job
    rather than a talk-through, and unblocks Pipelines.
 4. **Run Demo 11 once offline** before trusting it live.
-5. **Add Autopilot to the prebake list.**
+5. **Leave Autopilot out of the prebake list deliberately** — `--all` must
+   never trigger a $9.26 job. Launch it by hand when the artifact is missing.

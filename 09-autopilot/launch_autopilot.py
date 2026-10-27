@@ -9,8 +9,22 @@ it hard: a small data sample, ENSEMBLING mode, max 10 candidates, and runtime ca
 Old way: SageMaker Autopilot (here / Studio Classic leaderboard UI).
 New way: the same AutoML via SageMaker Canvas inside Unified Studio (no-code).
 
-Rough cost with defaults below: ~$2-6, ~40-75 min. Unconstrained Autopilot can be
-$20-50+ over several hours — DON'T remove the caps for a class.
+MEASURED cost with the defaults below: $9.26 for one run, 20 min wall clock
+(2026-10-26, us-east-1). An earlier version of this docstring estimated $2-6,
+which was wrong, and the reason it was wrong is worth knowing:
+
+  max_candidates caps HOW MANY trials run. It does not cap how big they are.
+
+Autopilot chooses its own instance type for each trial's processing step, and
+it chose ml.r5.16xlarge — 64 vCPU, 512 GB, ~$4.84/hr — then ran all 10 trials
+in PARALLEL for ~12 minutes each. That is 1.91 instance-hours, i.e. $9.26, on a
+15,000-row sample that a t3.medium would have handled. None of the caps in this
+script can prevent it; there is no instance-type parameter for the trial
+processing jobs in CreateAutoMLJobV2.
+
+So: run this ONCE, keep the completed job, and demo from the leaderboard. Every
+re-run is another ~$9. Unconstrained (no max_candidates) it is $20-50+ over
+several hours — DON'T remove the caps.
 
 Usage:
     python launch_autopilot.py --bucket YOUR-BUCKET-NAME \
