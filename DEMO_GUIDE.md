@@ -1,4 +1,4 @@
-# Demo guide — SoCalGas edition
+# Demo guide — gas-utility demand dataset
 
 How to actually run this in front of a room. One story, told in the order the
 room will follow it, with the exact commands and what to say over each.
@@ -18,7 +18,7 @@ room will follow it, with the exact commands and what to say over each.
 That is the whole series. Every module is one step of that sentence, done two
 ways: the old way (standalone SageMaker AI) and the new way (Unified Studio).
 
-Why it lands with SoCalGas: heating degree days is *their* metric. This is not
+Why it lands with a gas utility: heating degree days is *their* metric. This is not
 a toy dataset dressed up in their logo — it is the actual shape of their demand
 forecasting problem, built from public data.
 

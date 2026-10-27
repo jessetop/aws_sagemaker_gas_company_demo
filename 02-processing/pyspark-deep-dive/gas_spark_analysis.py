@@ -1,5 +1,5 @@
 """
-PySpark deep dive on the SoCalGas gas-demand dataset.
+PySpark deep dive on a gas-utility demand dataset.
 
 This is the source of truth for the notebook next to it. It is written as a
 runnable Glue script FIRST so every cell in the notebook is proven to work

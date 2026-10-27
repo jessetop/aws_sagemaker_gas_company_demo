@@ -1,4 +1,4 @@
-# The 5-minute demos — SoCalGas data, one service at a time
+# The 5-minute demos — gas-utility data, one service at a time
 
 Instructor-led demos on **our** dataset. These are deliberately **not** the AWS
 labs: the labs are self-contained and the students run those themselves. This is
@@ -48,7 +48,7 @@ Run `--status` the morning of. If anything says `no`, bake it before you walk in
 
 Say this once at the start of the day and refer back to it all day.
 
-> *"SoCalGas's load is driven by the weather. We took every weather observation
+> *"a gas utility's load is driven by the weather. We took every weather observation
 > on earth for the last ten years — two hundred million rows — narrowed it to
 > California's three thousand stations, worked out how cold each county actually
 > got, and lined that up against how much gas each county burned."*
@@ -126,7 +126,7 @@ Then the **clean GHCN** node - all four fixes as commented pandas.
 ### Beat 2 - the target (30s)
 
 > *"Sixty-five Fahrenheit is the utility industry's heating base. If the day's
-> HIGH never got there, SoCalGas had to supply gas for it. That's our label:
+> HIGH never got there, the utility had to supply gas for it. That's our label:
 > `heating_day`."*
 
 ### Beat 3 - F1 of 1.0, and why that's bad news (90s)

@@ -103,7 +103,7 @@ def register_model(args, sm_sess) -> None:
         transform_instances=["ml.m5.large"],
         model_package_group_name=MODEL_PACKAGE_GROUP,
         approval_status="Approved",
-        description="GradientBoosting high_demand classifier (SoCalGas gas-demand demo).",
+        description="GradientBoosting high_demand classifier (the gas utility gas-demand demo).",
     )
     print(f"registered model into package group '{MODEL_PACKAGE_GROUP}'")
 

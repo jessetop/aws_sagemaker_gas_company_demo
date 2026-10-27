@@ -1,6 +1,6 @@
 # PySpark deep dive — gas demand, no EMR cluster
 
-A genuinely interesting PySpark notebook on the SoCalGas dataset, deliberately
+A genuinely interesting PySpark notebook on the gas-utility dataset, deliberately
 built **without an EMR cluster**.
 
 ## Why not EMR

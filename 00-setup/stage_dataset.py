@@ -1,7 +1,7 @@
 """
 Module 0 - Stage the open datasets to S3 (shared setup for the whole series).
 
-SoCalGas edition. Natural-gas demand is overwhelmingly heating-driven, so the
+Natural-gas demand is overwhelmingly heating-driven, so the
 series is built on the same question a gas utility actually asks: *given the
 weather, how much gas does a county burn?* That needs four open datasets:
 

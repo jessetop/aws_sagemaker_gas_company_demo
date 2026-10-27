@@ -47,6 +47,33 @@ resource "aws_sagemaker_domain" "ai" {
     }
   }
 
+  # JupyterLab spaces need default_space_settings on the DOMAIN. Without this
+  # block the "Create JupyterLab space" option is unavailable -- Studio has no
+  # execution role or storage defaults to hand a new space, so it offers nothing
+  # to create. Canvas still worked because canvas_app_settings above covers it,
+  # which is exactly why the gap was easy to miss: one half of Studio worked.
+  #
+  # This is what Demo 3 (the serverless PySpark notebook) runs in.
+  default_space_settings {
+    execution_role = data.aws_iam_role.exec.arn
+
+    # No sagemaker_image_arn: let SageMaker pick the current SageMaker
+    # Distribution image, which is the one that ships the Glue PySpark kernel.
+    # Pinning an ARN here means the kernel list silently ages out.
+    jupyter_lab_app_settings {
+      default_resource_spec {
+        instance_type = "ml.t3.medium"
+      }
+    }
+
+    space_storage_settings {
+      default_ebs_storage_settings {
+        default_ebs_volume_size_in_gb = 20
+        maximum_ebs_volume_size_in_gb = 100
+      }
+    }
+  }
+
   # Keep teardown easy for a demo (no lingering EFS to clean up by hand).
   retention_policy {
     home_efs_file_system = "Delete"

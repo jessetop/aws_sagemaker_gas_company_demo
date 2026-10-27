@@ -1,7 +1,7 @@
 # Day 1 runbook — click by click
 
 Day 1 of MLASMS is **entirely Module 2: Data Processing**, so every demo below
-is a data-processing tool looking at the SoCalGas dataset. The students run
+is a data-processing tool looking at the gas-utility dataset. The students run
 AWS's labs themselves; these are your 5-minute interludes on *our* data.
 
 Keep this open on a second screen. Everything is literal: where to click, what
@@ -60,7 +60,7 @@ Draw this on the board and leave it up all day. Every demo refers back to it.
 (every station on earth, 10y)       joined to county gas consumption
 ```
 
-> *"SoCalGas's load is driven by the weather. We took every weather observation
+> *"a gas utility's load is driven by the weather. We took every weather observation
 > on earth for the last ten years, narrowed it to California's three thousand
 > stations, worked out how cold each county actually got, and lined that up
 > against how much gas each county burned. Everything we do today is one tool
@@ -100,7 +100,7 @@ Open `raw/` and point at the four prefixes:
 
 > *"Four public sources. Nothing proprietary, nothing simulated. Weather from
 > NOAA, geography from the Census, gas consumption from the California Energy
-> Commission — which publishes SoCalGas by name."*
+> Commission — which publishes the gas utility by name."*
 
 Click into `observations/YEAR=2024/` and show the `ELEMENT=` subfolders.
 
@@ -415,7 +415,7 @@ dosage — they're punctuation, not a parallel course.
 
 **If you're short on time, cut 4 first** (it's the only talk-through) and keep
 Demo 3's heating-sensitivity section no matter what. That one is the most
-SoCalGas-specific thing you will show all day.
+utility-specific thing you will show all day.
 
 ---
 

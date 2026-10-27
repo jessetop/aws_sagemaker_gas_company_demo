@@ -15,8 +15,8 @@ SDK), so the exact same function runs unchanged on:
   - A Unified Studio / Studio notebook Spark session
   - Local PySpark (for cheap offline testing)
 
-THE BUSINESS QUESTION (SoCalGas edition)
-----------------------------------------
+THE BUSINESS QUESTION
+---------------------
 Natural-gas demand is overwhelmingly heating-driven, so we model the question a
 gas utility actually asks: *given the weather, how much gas does a county
 burn?* Heating Degree Days (HDD, base 65F) is the industry-standard weather
