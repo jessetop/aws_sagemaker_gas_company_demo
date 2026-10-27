@@ -427,7 +427,7 @@ the first."*
 
 ## Demo 9 — Autopilot / Canvas (5 min)
 
-**Slot:** wherever AutoML fits.
+**Slot:** Module 3 Model Development, slide 40 — the deck has its own Autopilot demo slot. Day 2.
 **Baked:** run `09-autopilot/launch_autopilot.py` ahead of time (not yet in the
 prebake list — it takes ~30 min).
 
@@ -443,7 +443,7 @@ leaderboard out of all three.
 
 ## Demo 10 — Clarify: bias and explainability (5 min)
 
-**Slot:** Module 3, Design/Governance.
+**Slot:** Module 3 Model Development, Lab 6 (slide 48). Day 2.
 **Baked:** `clarify`.
 
 **Here's how you make it:** `clarify_bias_explainability.py` — facet column,

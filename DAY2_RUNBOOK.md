@@ -234,6 +234,38 @@ Canvas also auto-creates an EMR Serverless app
 
 ---
 
+## Demo 10 — Clarify (5 min)
+**Module 3 Model Development, Lab 6 (slide 48)** · **Baked:** `clarify`
+
+### Where to go
+1. **SageMaker AI console** → **Processing** → **Processing jobs**
+2. Find the Clarify job → note its output path
+3. S3 → `clarify/` → download and open **`report.html`**
+
+### What to say
+> *"Clarify asks two different questions. Is the model biased with respect to
+> some attribute — and separately, why did it make this prediction. Same
+> service, two jobs."*
+
+Our facet is **`is_heating_season`**.
+
+> *"The report says this model behaves very differently in winter than in
+> summer. For a utility that matters enormously: a demand model that's only
+> accurate half the year fails exactly when you need it."*
+
+Then the SHAP section.
+
+> *"And here's which features actually drove it."* — which is Demo 7's
+> argument arriving from a second direction: SHAP ranks the features, and you
+> can see for yourself whether the model learned weather or learned the
+> calendar.
+
+### Cost warning worth passing on
+> *"SHAP cost scales with rows × samples. Run it on a full test set and you're
+> doing millions of inferences through a shadow endpoint. We sample 300 rows."*
+
+---
+
 ## Demo 11 — Deployment and inference (5 min)
 **Module 4, the main event** · **Runs LIVE** — ✅ verified end to end
 
@@ -363,14 +395,15 @@ Say it out loud as you do it. It reinforces Demo 11's lesson.
 
 | Slot | Demo | Min | Notes |
 |---|---|---|---|
-Module 4 open | 6 — Training jobs | 5 | |
-Module 4 | 7 — Experiments + metric arc | 5 | **the keeper** |
-Module 4 | 8 — HPO | 5 | |
+Module 3 open | 6 — Training jobs | 5 | |
+Module 3 | 7 — Experiments + metric arc | 5 | **the keeper** |
+Module 3 | 8 — HPO | 5 | |
+Module 3, slide 40 | 9 — Autopilot | 5 | deck has its own demo slot here |
+Module 3, Lab 6 | 10 — Clarify | 5 | moved from Day 1 |
 Module 4 | 11 — Deploy + infer | 5 | runs live |
 Module 5 | 12 — Monitor + Model Card | 5 | needs morning endpoint |
-flexible | 9 — Autopilot | 5 | |
 
-~30 minutes across the day.
+~35 minutes across the day.
 
 **If you're short:** cut 8 (HPO) — its best line is already inside Demo 7. Never
 cut 7.

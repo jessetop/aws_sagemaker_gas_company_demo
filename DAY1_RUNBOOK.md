@@ -370,35 +370,6 @@ That last clause is the whole product. Don't skip it.
 
 ---
 
-## Demo 10 — Clarify (5 min)
-**Module 3, Design & Governance — Day 1 afternoon** · **Baked:** `clarify`
-
-### Where to go
-1. **SageMaker AI console** → **Processing** → **Processing jobs**
-2. Find the Clarify job → note its output path
-3. S3 → `clarify/` → download and open **`report.html`**
-
-### What to say
-> *"Clarify asks two different questions. Is the model biased with respect to
-> some attribute — and separately, why did it make this prediction. Same
-> service, two jobs."*
-
-Our facet is **`is_heating_season`**.
-
-> *"The report says this model behaves very differently in winter than in
-> summer. For a utility that matters enormously: a demand model that's only
-> accurate half the year fails exactly when you need it."*
-
-Then the SHAP section.
-
-> *"And here's which features actually drove it."* — which sets up Day 2.
-
-### Cost warning worth passing on
-> *"SHAP cost scales with rows × samples. Run it on a full test set and you're
-> doing millions of inferences through a shadow endpoint. We sample 300 rows."*
-
----
-
 ## Day 1 running order
 
 | Slot | Demo | Min | Ready |
@@ -408,9 +379,8 @@ Module 2, tool 1 | 2 — Data Wrangler | 5 | ⚠️ live-build; no saved flow |
 Module 2, tool 2 | 3 — PySpark serverless | 5 | ✅ verified on Glue |
 Module 2, tool 3 | 4 — Processing | 5 | ⚠️ talk-through only |
 Module 2, tool 4 | 5 — Feature Store | 5 | ✅ |
-Module 3 afternoon | 10 — Clarify | 5 | ⏳ baking |
 
-Six interludes, ~30 minutes total across a 6.75-hour day. That's the right
+Five interludes, ~25 minutes total across a 6.75-hour day. That's the right
 dosage — they're punctuation, not a parallel course.
 
 **If you're short on time, cut 4 first** (it's the only talk-through) and keep
