@@ -516,6 +516,61 @@ whether or not anyone calls it. Notice the last line of this script is a delete.
 
 ---
 
+## Demo 13 — AI-DLC: where all of this came from (5 min)
+
+**Slot:** Day 3, Module 6 or Module 7 — the only demo-free stretch in the whole
+deck set, and the natural place for "so how do you actually build this stuff."
+**Baked:** ✅ `.kiro/specs/sagemaker-studio-demos/requirements.md` (in the repo
+since day one) + `ai-dlc/transcript/`.
+**Cost:** **$0 of AWS.** Nothing to delete afterwards.
+
+**The framing:** this is the only demo in the set that is not a SageMaker
+service. For three days the room has run notebooks, a Processing job, an HPO
+sweep, a pipeline. Somebody had to write all of it. AWS has a published opinion
+about who that somebody is now, and the artifact is in the repo they cloned on
+Day 1.
+
+> *"Sprints become bolts — hours, not weeks. Epics become units of work.
+> Elaboration happens in a mob, with the AI planning and a human at every gate.
+> That is the whole vocabulary."*
+
+**Here's how you make it:** at the repo root, `aidlc config --harness claude`,
+then paste the unit of work from `ai-dlc/unit-of-work.md` — the anomaly triage
+report that Demo 6a deliberately stopped short of. It produces a plan and then
+**stops to ask you questions.** That pause is the demo. If it proposes a
+SageMaker endpoint, reject it on stage: the method is worth nothing if the gate
+isn't real, and the room needs to watch one close.
+
+🟡 **Hit cancel** after the first gate — *"this runs about twenty minutes and I'm
+not making you watch it."*
+
+**Here's one I made earlier:** open
+`.kiro/specs/sagemaker-studio-demos/requirements.md`. A glossary, user stories,
+and EARS acceptance criteria — `THE Dataset_Loader SHALL download a publicly
+available dataset of at least 100,000 samples`, `IF the download fails THEN
+retry up to 3 times`. 133 lines, none of them hand-typed.
+
+Then land it:
+
+> *"This file is why this repo has folders 00 through 10. The thing you have
+> been running for three days came out of one of these."*
+
+**The line that makes it honest** — and the only part of this demo that can't be
+faked. Read the spec's dataset requirement out loud, then point at the actual
+data:
+
+> *"It asked for a public dataset of a hundred thousand samples. You spent three
+> days on two hundred million weather observations and California county therms.
+> A human read that line and said no. The agent rebuilt around the override.
+> That is the gate doing its job — and it's why 'AI plans, human decides' is the
+> whole method and not a slogan."*
+
+⚠️ **This is the one non-deterministic demo in the repo.** `/aidlc` words its
+plan differently every run. Rehearse once and keep `ai-dlc/transcript/` open in
+a second tab.
+
+---
+
 ## Readiness
 
 Check before you commit to a demo in a running class.
@@ -534,6 +589,7 @@ Check before you commit to a demo in a running class.
 | 9 | Autopilot | ✅ verified | ✅ `roi-smdemo-gas-autopilot` | ✅ from artifact — never re-run live ($9.26) |
 | 10 | Clarify | ✅ ported | see `--status` | check |
 | 11 | Deployment | ✅ ported | live | ⚠️ run once first |
+| 13 | AI-DLC (Day 3) | n/a — a method, not code | ✅ spec + `ai-dlc/transcript/` | ✅ $0, rehearse once |
 
 ### Two AWS API traps the prebaker had to work around
 

@@ -58,8 +58,12 @@ python shared/verify_demos.py            # confirm every artifact is real
 ```
 
 Then read [`DEMOS.md`](DEMOS.md) for the demo scripts, or
-[`DAY1_RUNBOOK.md`](DAY1_RUNBOOK.md) / [`DAY2_RUNBOOK.md`](DAY2_RUNBOOK.md) for
-click-by-click instructions.
+[`DAY1_RUNBOOK.md`](DAY1_RUNBOOK.md) / [`DAY2_RUNBOOK.md`](DAY2_RUNBOOK.md) /
+[`DAY3_RUNBOOK.md`](DAY3_RUNBOOK.md) for click-by-click instructions.
+
+Day 3 is the odd one out: Modules 6 and 7 have no AWS demo or lab slides at
+all, so the demo there is [`ai-dlc/`](ai-dlc/) — AWS's AI-Driven Development
+Life Cycle, run against this repo's own spec. No SageMaker, no spend.
 
 ---
 
@@ -172,6 +176,7 @@ as success.
 10-custom-container/  bring-your-own-container  (not ported)
 shared/            config, transforms, ML prep, prebake, verification
 cleanup/           teardown + the billable-resource sweep
+ai-dlc/            Demo 13 — AWS AI-DLC. Day 3, not a SageMaker service
 terraform/         domain, Canvas reaper, budgets, IAM
 ```
 
