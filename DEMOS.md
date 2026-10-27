@@ -344,6 +344,29 @@ Store exists to prevent.
 
 ---
 
+## Demo 6a — Built-in algorithm: Random Cut Forest (5 min)
+
+**Slot:** Module 3 Model Development, slide 13 — the deck's own *optional*
+built-in-algorithm demo slot. Day 2.
+**Baked:** ✅ `roi-smdemo-gas-rcf-261027-0750`, 164 billable seconds.
+
+**The framing:** every other demo is supervised and uses the `high_demand`
+label we invented. This one deletes that column. Unsupervised anomaly
+detection — "which rows don't look like the others" — because the expensive
+surprises in a utility are the ones nobody labelled in advance.
+
+**Here's how you make it:** `04-training/builtin-rcf/launch_rcf.py`. No
+training script at all: a built-in is an AWS-maintained container you address
+by name, so you bring data and hyperparameters and nothing else.
+
+**Here's one I made earlier:** the Completed job, its image URI, and
+`feature_dim=18`.
+
+🔴 Stop after training — the slide says so, and scoring would mean an
+hourly-billed endpoint.
+
+---
+
 ## Demo 6 — Training jobs (5 min)
 
 **Slot:** Module 3 / Day 2 Module 4 lead-in.
@@ -501,6 +524,7 @@ Check before you commit to a demo in a running class.
 | 3 | PySpark, serverless (Glue) | ✅ verified | ✅ notebook + Glue run | ✅ |
 | 4 | SageMaker Processing | ⚠️ partial | ✅ splits | ⚠️ talk-through |
 | 5 | Feature Store | ✅ verified | ✅ `roi-smdemo-gas-features` | ✅ |
+| 6a | Built-in algo (RCF) | ✅ verified | ✅ `roi-smdemo-gas-rcf-261027-0750` | ✅ |
 | 6 | Training | ✅ verified | ✅ | ✅ |
 | 7 | Experiments + metric arc | ✅ verified | ✅ baseline + 4 HPO trials | ✅ |
 | 8 | HPO | ✅ verified | ✅ `roi-smdemo-gas-hpo-261026-1514` | ✅ |
