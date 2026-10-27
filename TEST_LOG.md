@@ -130,7 +130,7 @@ HDD bucket distribution over 10 years of California station-days:
 
 | Step | What was tested | Result |
 |---|---|---|
-| Terraform | `apply` from scratch, second time | ✅ 19 added; domain `d-nvvqokjr2qep` |
+| Terraform | `apply` from scratch, second time | ✅ 19 added; domain `YOUR-DOMAIN-ID` |
 | Canvas reaper | live invoke after redeploy | ✅ `{"killed": [], "kept": [], "errors": []}` |
 | 0 Setup | `stage_dataset.py 2015-2024` | ✅ 419 Parquet objects + 4 lookups |
 | 1 Visual ETL | Glue 4.0, 4×G.1X | ✅ SUCCEEDED, 602 s, 0.6689 DPU-h (**~$0.29**) |

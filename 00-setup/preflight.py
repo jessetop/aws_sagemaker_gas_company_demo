@@ -202,12 +202,78 @@ def check_public_data(rep: Report, session) -> None:
     rep.ok("public NOAA GHCN bucket (noaa-ghcn-pds) is reachable")
 
 
+def write_links(session, region: str, bucket: str) -> int:
+    """Resolve this account's Studio domain and write LINKS.local.md.
+
+    The runbooks ship with YOUR-DOMAIN-ID in them, because a Studio domain id
+    identifies the account it belongs to and this repo is public. This puts the
+    real URLs one click away locally without committing them: LINKS.local.md is
+    gitignored.
+    """
+    sm = session.client("sagemaker", region_name=region)
+    try:
+        domains = sm.list_domains()["Domains"]
+    except Exception as exc:  # noqa: BLE001
+        print(f"could not list Studio domains in {region}: {exc}")
+        return 1
+    if not domains:
+        print(f"no SageMaker Studio domain in {region}.")
+        print("Create one with: cd terraform && terraform apply")
+        return 1
+
+    lines = [
+        "# Your links (generated, gitignored)",
+        "",
+        "Written by `python 00-setup/preflight.py --links`. Not committed: a",
+        "domain id identifies its account and this repo is public. Regenerate",
+        "any time.",
+        "",
+        "| | |",
+        "|---|---|",
+        f"| **Region** | {region} |",
+        f"| **Bucket** | `{bucket}` |",
+    ]
+    for d in domains:
+        did, name = d["DomainId"], d.get("DomainName", "")
+        url = f"https://{did}.studio.{region}.sagemaker.aws"
+        lines += [
+            f"| **Studio domain** | `{did}`{f' ({name})' if name else ''} |",
+            f"| **Studio URL** | {url} |",
+        ]
+    lines += [
+        "",
+        "Console shortcuts:",
+        "",
+        f"- Processing jobs - https://{region}.console.aws.amazon.com/sagemaker/home?region={region}#/processing-jobs",
+        f"- Training jobs   - https://{region}.console.aws.amazon.com/sagemaker/home?region={region}#/jobs",
+        f"- Feature Store   - https://{region}.console.aws.amazon.com/sagemaker/home?region={region}#/feature-store",
+        f"- Endpoints       - https://{region}.console.aws.amazon.com/sagemaker/home?region={region}#/endpoints",
+        f"- Glue jobs       - https://{region}.console.aws.amazon.com/gluestudio/home?region={region}#/jobs",
+        "",
+    ]
+    out = _os.path.join(_root, "LINKS.local.md")
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(chr(10).join(lines))
+    print(f"wrote {out}")
+    for d in domains:
+        print(f"  https://{d['DomainId']}.studio.{region}.sagemaker.aws")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Check this repo is configured for your AWS account. Makes no changes."
     )
     add_common_args(parser)
+    parser.add_argument(
+        "--links", action="store_true",
+        help="Write LINKS.local.md with this account's real Studio URLs and exit.",
+    )
     args = parser.parse_args()
+
+    if args.links:
+        session = boto3.Session(profile_name=args.profile, region_name=args.region)
+        return write_links(session, args.region, args.bucket)
 
     print("=" * 68)
     print("Preflight - resolved configuration")

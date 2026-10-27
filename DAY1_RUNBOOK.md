@@ -38,11 +38,18 @@ Then note these down — you'll need them in the URL bar all day:
 
 | | |
 |---|---|
-**Studio domain** | `d-nvvqokjr2qep` |
-**Studio URL** | https://d-nvvqokjr2qep.studio.us-east-1.sagemaker.aws |
+**Studio domain** | `YOUR-DOMAIN-ID` |
+**Studio URL** | https://YOUR-DOMAIN-ID.studio.us-east-1.sagemaker.aws |
 **Bucket** | `YOUR-BUCKET-NAME` |
 **Region** | us-east-1 (everything; don't let the console drift) |
 **Profile** | `default` |
+
+Both placeholders are printed by preflight, which writes them to the
+gitignored `LINKS.local.md` so your real URLs are one click away:
+
+```bash
+python 00-setup/preflight.py --links
+```
 
 > ⚠️ **Check the region selector in the console says N. Virginia before every
 > demo.** The console remembers the last region you used, and every artifact
@@ -83,7 +90,7 @@ Draw this on the board and leave it up all day. Every demo refers back to it.
 **Pairs with:** Module 1 Setup · **Baked:** nothing needed
 
 ### Where to go
-1. Open **https://d-nvvqokjr2qep.studio.us-east-1.sagemaker.aws**
+1. Open **https://YOUR-DOMAIN-ID.studio.us-east-1.sagemaker.aws**
 2. Launch the **`roi-smdemo-gas-user`** profile → Studio opens.
 3. Walk the left nav once, slowly. *"Everything we touch today is in here."*
 4. New tab → **S3 console** → bucket `YOUR-BUCKET-NAME`

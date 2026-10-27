@@ -34,7 +34,7 @@ python 07-deployment/monitor_demo_endpoint.py
 
 | | |
 |---|---|
-**Studio** | https://d-nvvqokjr2qep.studio.us-east-1.sagemaker.aws |
+**Studio** | https://YOUR-DOMAIN-ID.studio.us-east-1.sagemaker.aws |
 **Bucket** | `YOUR-BUCKET-NAME` |
 **Region** | us-east-1 — check the selector says N. Virginia |
 
