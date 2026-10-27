@@ -141,8 +141,12 @@ def main() -> int:
     # slide. There is no training script and no requirements.txt: the algorithm
     # ships as an AWS-maintained container image and you address it by name.
     # That IS the point of a built-in -- you bring data and hyperparameters.
-    import sagemaker
-    image = sagemaker.image_uris.retrieve("randomcutforest", args.region)
+    # Import the submodule, not the package. `import sagemaker` does not reliably
+    # bind `sagemaker.image_uris` -- it depends on what that version's __init__.py
+    # re-exports. Bound in 2.257.3, NOT bound in the Studio image, which is how
+    # the notebook twin of this line failed in class while this script worked.
+    from sagemaker import image_uris
+    image = image_uris.retrieve("randomcutforest", args.region)
     print(f"  {image}")
 
     job = f"{job_prefix}-{time.strftime('%y%m%d-%H%M')}"

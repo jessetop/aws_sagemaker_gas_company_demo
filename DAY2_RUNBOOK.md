@@ -89,9 +89,20 @@ train*. So run it from the notebook, not the console:
 
 **Studio → JupyterLab →** `aws_sagemaker_gas_company_demo/04-training/builtin-rcf/rcf_builtin.ipynb`
 
-14 cells, every one executed against this account before class. Section 1 sets
-up, 2 shows the label being deleted, 3 is the one-line "set up the libraries"
-beat, 4 launches the job, 5 pulls the finished one.
+14 cells. Section 1 sets up, 2 shows the label being deleted, 3 is the one-line
+"set up the libraries" beat, 4 launches the job, 5 pulls the finished one.
+
+> ⚠️ **This file used to claim "every cell executed against this account before
+> class." That was false, and it cost a live demo.** What had been verified was
+> `launch_rcf.py` — the headless twin that bakes the artifact — not the
+> notebook. Section 3 then failed in Studio with
+> `AttributeError: module 'sagemaker' has no attribute 'image_uris'`, because
+> `import sagemaker` binds that submodule in the laptop's SDK (2.257.3) and not
+> in the Studio image. Both files now import `from sagemaker import image_uris`,
+> which works on every v2.
+>
+> **Run the notebook end to end in Studio once** before trusting this section.
+> A baked artifact proves the script ran; it proves nothing about the notebook.
 
 **The 5-minute path:** run 1 → 2 → 3, talk through 4 while it starts, then
 jump to 5. Do not wait for the job.
