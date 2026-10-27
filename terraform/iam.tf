@@ -96,3 +96,44 @@ resource "aws_iam_role_policy" "canvas_reaper" {
     ]
   })
 }
+
+# ---- Glue Interactive Sessions (Demo 3: serverless PySpark notebook) -------
+# A Studio notebook on the Glue PySpark kernel asks Glue to start a session and
+# PASSES this role to it. Without iam:PassRole the kernel fails to start, and
+# the error surfaces in the notebook as a session-creation failure rather than
+# anything that names the missing permission.
+#
+# Scoped two ways: only this role may be passed, and only to Glue.
+resource "aws_iam_role_policy" "exec_pass_role_to_glue" {
+  name = "${var.name_prefix}-pass-role-to-glue"
+  role = data.aws_iam_role.exec.name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid      = "PassSelfToGlueForInteractiveSessions"
+        Effect   = "Allow"
+        Action   = "iam:PassRole"
+        Resource = data.aws_iam_role.exec.arn
+        Condition = {
+          StringEquals = {
+            "iam:PassedToService" = "glue.amazonaws.com"
+          }
+        }
+      },
+      {
+        # Interactive Sessions also need to tag the session it creates.
+        Sid    = "GlueInteractiveSessionTagging"
+        Effect = "Allow"
+        Action = [
+          "glue:TagResource",
+          "glue:ListSessions",
+          "glue:CancelStatement",
+          "glue:GetStatement",
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
