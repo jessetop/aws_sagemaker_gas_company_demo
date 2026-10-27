@@ -525,7 +525,7 @@ Check before you commit to a demo in a running class.
 | 1 | Studio tour | n/a | n/a | ✅ |
 | 2 | Data Wrangler | ⚠️ flow is a stub | ✅ data | ⚠️ live-build only |
 | 3 | PySpark, serverless (Glue) | ✅ verified | ✅ notebook + Glue run | ✅ |
-| 4 | SageMaker Processing | ⚠️ partial | ✅ splits | ⚠️ talk-through |
+| 4 | SageMaker Processing | ✅ verified | ✅ `roi-smdemo-gas-prep-2026-10-27-15-34-24-552` | ✅ |
 | 5 | Feature Store | ✅ verified | ✅ `roi-smdemo-gas-features` | ✅ |
 | 6a | Built-in algo (RCF) | ✅ verified | ✅ `roi-smdemo-gas-rcf-261027-0750` | ✅ |
 | 6 | Training | ✅ verified | ✅ | ✅ |
@@ -561,8 +561,12 @@ you into a class mistrusting a correct `--status`.
 1. **Export a real Data Wrangler flow** from Canvas and commit it. Demo 2 is the
    first one the room sees in Module 2 and it's currently live-build-only.
 2. **Port module 2 (EMR)** — Demo 3 is the only one with no working code.
-3. **Port `08-pipelines/preprocess.py`** — makes Demo 4 a real Processing job
-   rather than a talk-through, and unblocks Pipelines.
+3. ~~Port `08-pipelines/preprocess.py`~~ — **done.**
+   `02-processing/launch_processing.py` runs it standalone. Doing so found that
+   the script had never actually executed: it asked the parquet reader for
+   `precip_reported` (derived, not stored) and for `obs_year`/`obs_month`
+   (Hive partition columns that live in directory names, not in the files).
+   Both now fixed, which also unblocks the Pipeline step.
 4. **Run Demo 11 once offline** before trusting it live.
 5. **Leave Autopilot out of the prebake list deliberately** — `--all` must
    never trigger a $9.26 job. Launch it by hand when the artifact is missing.

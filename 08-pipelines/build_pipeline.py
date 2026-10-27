@@ -148,7 +148,7 @@ def main() -> int:
     )
     proc_args = processor.run(
         code="08-pipelines/preprocess.py",
-        inputs=[ProcessingInput(source=f"s3://{b}/processed/visual-etl/", destination="/opt/ml/processing/input")],
+        inputs=[ProcessingInput(source=f"s3://{b}/processed/visual-etl/", destination="/opt/ml/processing/input/data")],
         outputs=[
             ProcessingOutput(output_name="train", source="/opt/ml/processing/output/train", destination=f"s3://{b}/pipeline/train"),
             ProcessingOutput(output_name="validation", source="/opt/ml/processing/output/validation", destination=f"s3://{b}/pipeline/validation"),

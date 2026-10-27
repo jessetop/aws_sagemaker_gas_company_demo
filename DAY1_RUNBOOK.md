@@ -336,20 +336,44 @@ Gives them a reason to keep the artifact.
 ---
 
 ## Demo 4 — SageMaker Processing (5 min)
-**Module 2, Lab 4 territory** · **Baked:** `splits`
-**Status: talk-through only** — the Processing-job wrapper isn't ported yet.
+**Module 2, Lab 4 territory** · ✅ **verified** · **Baked:** `roi-smdemo-gas-prep-2026-10-27-15-34-24-552`
 
 ### Where to go
-Open `shared/prepare_ml_data.py` in Studio's editor. No console needed.
+**SageMaker AI console → Processing → Processing jobs →** `roi-smdemo-gas-prep-2026-10-27-15-34-24-552`
 
-> *"Processing is for when your transform is just code. No canvas, no cluster —
-> hand SageMaker a script and a container, and it runs it on whatever size
-> machine you ask for. Notice there isn't a single SageMaker import in the data
-> logic. That's the point: it's a plain Python script."*
+| | |
+|---|---|
+Status | **Completed** |
+Instance | ml.m5.xlarge, **94 seconds** |
+Container | stock AWS scikit-learn 1.2-1 — **no Dockerfile** |
+Input | `processed/visual-etl/` → `/opt/ml/processing/input/data` |
+Outputs | 3 channels → `processed/demo4-processing/{train,validation,test}` |
 
-Then S3 → `ml/gas/train/`, `validation/`, `test/`.
+### What to say
 
-> *"150,000 rows, 19 features, label in the first column."*
+Open the **Input/output configuration** panel — that is the demo.
+
+> *"Processing is for when your transform is just code. No canvas, no cluster.
+> I handed SageMaker a plain Python script and an instance type. It started the
+> machine, mounted my S3 input as a local directory, ran the script, copied the
+> outputs back to S3, and shut the machine down. Ninety-four seconds. I paid
+> for ninety-four seconds."*
+
+Then the part that makes it click:
+
+> *"Look at the script — there is not one SageMaker import in it, and not one
+> S3 path. It reads a local directory and writes a local directory. SageMaker
+> does the copying. That is the whole contract, and it's why this exact file
+> also runs unchanged as a step inside the Pipeline we'll see later."*
+
+And the cost contrast, which they will remember:
+
+> *"The instance existed only for those ninety-four seconds. There is nothing
+> here to remember to turn off — which is not true of Canvas, and not true of
+> an endpoint."*
+
+Show the script itself if you want: `08-pipelines/preprocess.py`.
+Outputs in S3: `processed/demo4-processing/`.
 
 ### Spend 60 seconds on the honest bit — this is the valuable part
 
@@ -409,7 +433,7 @@ That last clause is the whole product. Don't skip it.
 after Module 1 Setup | 1 — Studio + the data | 5 | ✅ |
 Module 2, tool 1 | 2 — Data Wrangler | 5 | ⚠️ live-build; no saved flow |
 Module 2, tool 2 | 3 — PySpark serverless | 5 | ✅ verified on Glue |
-Module 2, tool 3 | 4 — Processing | 5 | ⚠️ talk-through only |
+Module 2, tool 3 | 4 — Processing | 5 | ✅ verified |
 Module 2, tool 4 | 5 — Feature Store | 5 | ✅ |
 
 Five interludes, ~25 minutes total across a 6.75-hour day. That's the right
