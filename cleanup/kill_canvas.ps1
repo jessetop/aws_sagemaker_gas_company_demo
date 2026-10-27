@@ -1,5 +1,12 @@
-# Immediately kill running SageMaker Canvas apps (the ~$50/day biller).
-# Scans the given regions, lists apps, and deletes Canvas sessions on demand.
+# Immediately stop running SageMaker Canvas apps (the ~$50/day biller).
+#
+# This stops the APP, not the SPACE. SageMaker has no stop API for apps --
+# DeleteApp is the stop button, and it is what the Studio UI calls when you
+# click Stop. Your space, its EBS volume, your files and your Data Wrangler
+# flows (which live on the user profile's EFS home) are all untouched; "Run
+# space" brings everything back. Only in-memory kernel state is lost.
+#
+# Scans the given regions, lists apps, and stops Canvas sessions on demand.
 # The Terraform-managed reaper handles this automatically on a schedule; this is
 # the manual "kill it now" button.
 #

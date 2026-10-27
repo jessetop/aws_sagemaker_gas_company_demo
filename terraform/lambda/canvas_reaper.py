@@ -22,6 +22,23 @@ result, where it is always absent, so every app fell back to its creation time
 and got deleted an hour after launch whether or not it was in use - which would
 kill Canvas mid-demo. Hence the per-app DescribeApp call below.
 
+WHAT THIS DELETES, AND WHAT IT DOES NOT
+---------------------------------------
+SageMaker has no stop API for apps. DeleteApp IS the stop button -- it is what
+the Studio UI calls when you click Stop. Three layers, only one of which bills:
+
+    Domain  the container                         ~free at rest
+    Space   your workspace: EBS volume, files     ~pennies for the volume
+    App     the running compute on a space        <- this is what bills
+
+This only ever calls delete_app. The SPACE survives, with its EBS volume and
+everything on it, and "Run space" brings it back with your notebooks where you
+left them. Data Wrangler flows live on the user profile's EFS home, which is a
+separate volume again and also untouched.
+
+The one thing you lose is in-memory kernel state -- a live Spark session, any
+dataframes you had computed. Files on disk are fine.
+
 Env vars (set by Terraform):
     REAPER_REGIONS            comma-separated regions to sweep. Canvas is
                               region-scoped, and the 2026 overrun happened in
