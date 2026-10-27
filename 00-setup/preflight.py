@@ -9,10 +9,10 @@ Two audiences, same check:
 
   * The instructor, before class, confirming the account still looks the way
     CLASS_PREP.md assumes.
-  * Anyone who cloned this repo to try it in their own account. demo.env ships
-    with the original author's account id and CLI profile baked in, so without
-    this check the first failure is an opaque AccessDenied several steps deep
-    rather than "edit these two lines."
+  * Anyone who cloned this repo to try it in their own account. demo.env is
+    gitignored, so a fresh clone falls back to placeholder values -- and
+    without this check the first failure is an opaque AccessDenied several
+    steps deep rather than "copy demo.env.example and edit these two lines."
 
 Usage:
     python 00-setup/preflight.py
@@ -42,10 +42,11 @@ _sys.path.insert(0, _root)
 from shared import config
 from shared.config import add_common_args
 
-# The values demo.env ships with. If the caller's real identity disagrees with
-# these, they almost certainly cloned the repo and have not edited demo.env yet.
-AUTHOR_ACCOUNT = "029331796573"
-AUTHOR_PROFILE = "roitraining"
+# The placeholder values the shipped template carries. If the caller's real
+# identity disagrees with these, they cloned the repo and have not copied
+# demo.env.example to demo.env yet.
+PLACEHOLDER_ACCOUNT = "000000000000"
+PLACEHOLDER_PROFILE = "default"
 
 OK = "  [ OK ]"
 BAD = "  [FAIL]"
@@ -113,10 +114,10 @@ def check_identity(rep: Report, session, expected_account: str) -> str | None:
             f"demo.env says SMDEMO_ACCOUNT={expected_account} but your credentials "
             f"are for account {actual}"
         )
-        if expected_account == AUTHOR_ACCOUNT:
+        if expected_account == PLACEHOLDER_ACCOUNT:
             rep.fail(
-                detail + " -- this looks like a fresh clone",
-                f"edit demo.env: set SMDEMO_ACCOUNT={actual}, set SMDEMO_PROFILE to "
+                detail + " -- demo.env has not been configured",
+                f"cp demo.env.example demo.env, then set SMDEMO_ACCOUNT={actual}, SMDEMO_PROFILE to "
                 f"your profile, and set SMDEMO_BUCKET to a bucket name you own "
                 f"(convention: roi-smdemo-{actual}-<region>)",
             )

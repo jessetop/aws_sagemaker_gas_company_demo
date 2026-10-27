@@ -1,7 +1,7 @@
 variable "profile" {
   description = "AWS CLI profile to use."
   type        = string
-  default     = "roitraining"
+  default     = "default"
 }
 
 variable "region" {
@@ -13,7 +13,7 @@ variable "region" {
 variable "account_id" {
   description = "AWS account ID (used to build ARNs / bucket names)."
   type        = string
-  default     = "029331796573"
+  default     = "000000000000"
 }
 
 variable "project_tag" {
@@ -31,7 +31,7 @@ variable "name_prefix" {
 variable "data_bucket_name" {
   description = "New in-region data bucket to hold the project dataset."
   type        = string
-  default     = "roi-smdemo-029331796573-us-east-1"
+  default     = "roi-smdemo-000000000000-us-east-1"
 }
 
 variable "exec_role_name" {

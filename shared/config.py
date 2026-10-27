@@ -48,9 +48,13 @@ def _get(key: str, fallback: str) -> str:
     return os.environ.get(key) or _FILE.get(key) or fallback
 
 
-ACCOUNT = _get("SMDEMO_ACCOUNT", "029331796573")
+# Placeholder on purpose. If demo.env is missing, 00-setup/preflight.py
+# compares this against your real sts identity and tells you which lines to
+# edit -- far better than silently targeting whatever account it was
+# developed in.
+ACCOUNT = _get("SMDEMO_ACCOUNT", "000000000000")
 REGION = _get("SMDEMO_REGION", "us-east-1")
-PROFILE = _get("SMDEMO_PROFILE", "roitraining")
+PROFILE = _get("SMDEMO_PROFILE", "default")
 # Bucket follows the <prefix>-<account>-<region> convention unless pinned.
 BUCKET = _get("SMDEMO_BUCKET", f"roi-smdemo-{ACCOUNT}-{REGION}")
 ROLE_ARN = _get("SMDEMO_ROLE_ARN", f"arn:aws:iam::{ACCOUNT}:role/roi-smdemo-exec-role")

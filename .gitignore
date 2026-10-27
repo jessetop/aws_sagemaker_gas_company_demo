@@ -15,3 +15,8 @@ Thumbs.db
 *.parquet
 *.joblib
 tmp/
+
+# Live account config — copy the .example files and edit. Never commit these:
+# they carry the account id, CLI profile and budget-alert email.
+demo.env
+terraform/terraform.tfvars

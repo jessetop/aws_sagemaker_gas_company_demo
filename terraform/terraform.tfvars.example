@@ -1,4 +1,5 @@
-# Live values for account 029331796573, us-east-1.
+# COPY THIS TO terraform.tfvars AND EDIT. terraform.tfvars is gitignored
+# so your account id and alert email never land in a public repo.
 #
 # NOTHING IS DEPLOYED RIGHT NOW. Verified 2026-10-23: the data bucket does not
 # exist in any region, and `list-domains` returns nothing in us-east-1 or
@@ -8,11 +9,11 @@
 # Keep name_prefix in step with SMDEMO_PREFIX in ../demo.env, or the cleanup
 # scripts will not find what Terraform created.
 
-profile          = "roitraining"
+profile          = "default"
 region           = "us-east-1"
-account_id       = "029331796573"
+account_id       = "000000000000"
 name_prefix      = "roi-smdemo-gas"
-data_bucket_name = "roi-smdemo-029331796573-us-east-1"
+data_bucket_name = "roi-smdemo-000000000000-us-east-1"
 exec_role_name   = "roi-smdemo-exec-role"
 
 # Left empty deliberately: no SageMaker or Unified Studio domain currently
@@ -80,7 +81,7 @@ kill_app_types = "Canvas"
 #
 # AWS sends a subscription confirmation for the anomaly alerts; the budget
 # notifications start working immediately without any confirmation step.
-budget_notification_email = "jessetoporowski@gmail.com"
+budget_notification_email = "you@example.com"
 
 daily_budget_usd             = 15 # a forgotten Canvas session trips this in a day
 sagemaker_monthly_budget_usd = 40 # the whole series end-to-end costs a few dollars
