@@ -49,6 +49,81 @@ python 07-deployment/monitor_demo_endpoint.py
 
 ---
 
+## Demo 6a — Built-in algorithm: Random Cut Forest (5 min)
+**Module 3 Model Development, slide 13 — the deck's own OPTIONAL demo slot**
+· ✅ **verified** · **Baked:** `roi-smdemo-gas-rcf-261027-0750`
+
+> Numbered 6a because slide 13 comes before slide 40 (Autopilot) and 48
+> (Clarify), and renumbering seven demos an hour before class was not worth it.
+> Say the word after class and it becomes a clean Demo 6.
+
+### Where to go
+1. **SageMaker AI console → Training → Training jobs**
+2. `roi-smdemo-gas-rcf-261027-0750` → **Completed**
+3. Scroll to **Algorithm** — point at the image URI:
+   `382416733822.dkr.ecr.us-east-1.amazonaws.com/randomcutforest:1`
+
+### What you're looking at (verified)
+
+| | |
+|---|---|
+Algorithm | built-in Random Cut Forest, **no training script** |
+Input | 15,000 rows × **18 features**, headerless CSV, **no label** |
+Hyperparameters | `num_trees=50`, `num_samples_per_tree=256`, `feature_dim=18` |
+Instance | ml.m5.large, **164 billable seconds** (~half a cent) |
+Throughput | 187,721 records/sec |
+
+### What to say
+
+> *"Everything else today was supervised. We invented a label — high_demand —
+> and asked the model to predict it. This one gets no label at all. I hand it
+> the same 18 columns with the answer column deleted, and it tells me which
+> rows don't look like the others."*
+
+Then the why, which is the part that matters to them:
+
+> *"The expensive surprises in a utility are the ones nobody labelled in
+> advance. A cold snap that blows through the forecast. A meter reporting
+> consumption the weather can't explain. You can't train a classifier for
+> 'the thing I didn't expect' — there's no column for it. This is the shape of
+> model you reach for instead."*
+
+How it works, if they want it:
+
+> *"It builds a lot of random trees by cutting on a random feature at a random
+> value. A point in a dense region takes many cuts to isolate. An outlier gets
+> isolated almost immediately. The score is how shallow the point lands,
+> averaged over fifty trees. No labels, no distance metric, no assumption the
+> data is bell-shaped."*
+
+### The two questions you will get
+
+**"What counts as a high score?"**
+> *"There's no absolute scale — scores are relative to this dataset. The
+> convention is mean + 3 standard deviations. Which means you're not
+> discovering a threshold, you're choosing an alert budget."*
+
+**"Why did you have to tell it there are 18 features?"**
+> *"Because built-ins eat headerless CSV — the container can't see your
+> schema. If `feature_dim` disagrees with the real column count the job dies at
+> startup. It's the single most common way this demo breaks, which is why the
+> script computes it instead of hard-coding it."*
+
+### 🔴 Stop here
+The slide's own speaker notes say end after training and do **not** go on to
+inference. Good advice for a second reason: scoring means standing up an
+endpoint, and endpoints bill by the hour. There is nothing to tear down from
+this demo.
+
+### Rebuild it
+```bash
+python 04-training/builtin-rcf/launch_rcf.py --status   # is it baked?
+python 04-training/builtin-rcf/launch_rcf.py           # ~4 min, cents
+```
+
+---
+
+
 ## Demo 6 — Training jobs (5 min)
 **Module 4 lead-in** · **Baked:** ✅ verified
 
