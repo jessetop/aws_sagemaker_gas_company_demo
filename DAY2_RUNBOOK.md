@@ -302,33 +302,60 @@ Say it out loud as you do it. It reinforces Demo 10's lesson.
 ---
 
 ## Demo 11 — Autopilot (5 min)
-**Wherever AutoML fits** · **Baked:** see `--status`
+**Wherever AutoML fits** · ✅ **verified**
 
 ### Where to go
-**Training → AutoML jobs** (or **Autopilot**) → `roi-smdemo-gas-autopilot` →
-the candidate leaderboard.
+**SageMaker AI console → Training → AutoML jobs** → `roi-smdemo-gas-autopilot`
+→ the candidate leaderboard.
 
-### The framing that lands
-> *"Autopilot is the engine. There are three front doors to it: the SDK if you
-> write code, the Studio UI if you want low-code, and Canvas if you want
-> no-code. All three produce the same ranked leaderboard. When someone asks
-> 'should we use Autopilot or Canvas', the question is malformed — Canvas IS
-> Autopilot, with a different front door."*
+### What you're looking at (verified)
 
-### What to say about the result
-Compare the top candidate's score against your hand-built 0.9235.
+10 candidates, ENSEMBLING mode, target `high_demand`, 15,000 rows.
 
-> *"Autopilot got there in one command. But it also inherited our label
-> definition — so it's confidently solving the same slightly-wrong problem we
-> were. AutoML optimises the model. It cannot tell you that you asked the wrong
-> question."*
+| Rank | Candidate | Accuracy |
+|---|---|---|
+1 | `WeightedEnsemble-L3-FULL` | **0.8800** |
+2-8 | `WeightedEnsemble-L2-FULL` (×7) | 0.8687 |
+9 | `WeightedEnsemble-L2-FULL` | 0.8664 |
+10 | `WeightedEnsemble-L2-FULL` | 0.8594 |
 
-That's the sharpest thing you can say about AutoML, and it lands harder because
-you showed them the wrong question in Demo 7.
+### The framing
+> *"Autopilot is the engine. Three front doors to it: the SDK if you write code,
+> the Studio UI for low-code, Canvas for no-code. All three produce this same
+> leaderboard. So 'should we use Autopilot or Canvas' is a malformed question —
+> Canvas IS Autopilot with a different front door."*
 
-⚠️ If you demo this through Canvas, it's a billable session — kill it after.
+### The comparison that lands
 
----
+Put these two numbers next to each other:
+
+| | Accuracy |
+|---|---|
+Autopilot — 10 candidates, 3-layer weighted ensemble | **0.8800** |
+Our hand-built GradientBoosting — one model, 145 seconds | **0.8794** |
+
+> *"Six ten-thousandths of a point. Autopilot searched ten candidates and
+> stacked a three-layer ensemble to match a single scikit-learn model we wrote
+> in an afternoon. Look at the spread too — 0.859 to 0.880 across all ten.
+> Everything works about equally well on this problem."*
+
+That echoes the HPO finding from Demo 8 and sets up the real point:
+
+> *"And here's the thing. Autopilot inherited our label definition. So it is
+> confidently and very efficiently solving the same slightly-wrong problem we
+> were — the one we found in Demo 7, where seventy percent of the model was 'is
+> it winter'. AutoML optimises the model. It cannot tell you that you asked the
+> wrong question. That is still your job, and it is the only part of this that
+> isn't automatable."*
+
+Strongest closing line available for an AutoML segment, and it only works
+because they watched you find the wrong question earlier.
+
+⚠️ If you demo this through Canvas rather than the console, that's a billable
+session — `powershell -File cleanup/kill_canvas.ps1` after. Note that opening
+Canvas also auto-creates an EMR Serverless app
+(`sm-canvas-data-wrangler-emr-app-<profile>`); it doesn't bill at rest, and
+`cleanup.ps1` removes it.
 
 ## Day 2 running order
 
