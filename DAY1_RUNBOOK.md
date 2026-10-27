@@ -22,6 +22,18 @@ Every row must say `yes` for the demos you plan to give. If not:
 python shared/prebake_demos.py --only <the missing keys>
 ```
 
+**Starting from a torn-down account?** Then, in order:
+
+```bash
+python 00-setup/create_bucket.py        # once ever - outside terraform
+cd terraform && terraform apply && cd ..  # domain, reaper, budgets  (~3 min)
+python 00-setup/preflight.py            # 6 checks, read-only
+python shared/prebake_demos.py --all    # ~46 min, unattended
+```
+
+If the bucket already exists (it does unless someone deleted it by hand), skip
+straight to `terraform apply` — the datasets survive teardown by design.
+
 Then note these down — you'll need them in the URL bar all day:
 
 | | |
