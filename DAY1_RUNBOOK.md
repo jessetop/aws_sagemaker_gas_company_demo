@@ -430,3 +430,34 @@ Any permissions error | `python 00-setup/preflight.py` names the exact fix |
 **Always have the fallback.** `TEST_LOG.md` holds every real number from a
 verified run. If a job dies on stage, switch to the log and talk through what it
 produced. Nobody minds — as long as you say that's what you're doing.
+
+---
+
+## Teardown is now safe to run freely
+
+The S3 bucket is **not** managed by Terraform. It used to be, which meant
+`terraform destroy` deleted it — along with 720 MB of staged GHCN/CEC data, the
+processed pipeline output, the ML splits and the Clarify reports. About 25
+minutes and a dollar of Glue to rebuild.
+
+```bash
+cd terraform && terraform destroy     # removes domain, reaper, budgets, IAM
+                                      # LEAVES the bucket and every dataset
+```
+
+To rebuild the compute afterwards: `terraform apply`. The data is still there,
+so you skip straight to demoing.
+
+The bucket only goes away if you ask for it explicitly:
+```bash
+powershell -File cleanup/cleanup.ps1 -IncludeBucket   # deletes the data too
+```
+
+> `prevent_destroy` was the obvious alternative and is the wrong tool — it does
+> not protect the data so much as make `terraform destroy` fail outright, which
+> blocks teardown of the things that actually cost money.
+
+**One known benign drift:** `terraform plan` reports `1 to change` on the Studio
+domain — AWS adds an empty `studio_web_portal_settings {}` block that Terraform
+wants to remove. Cosmetic. Ignore it, or apply it when you're not about to
+teach.

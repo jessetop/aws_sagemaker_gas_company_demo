@@ -27,6 +27,7 @@ watching a progress bar on stage:
 The cakes are baked by:
 
 ```bash
+python 00-setup/create_bucket.py          # once, ever
 python shared/prebake_demos.py --all      # ~46 min, a few dollars, unattended
 python shared/prebake_demos.py --status   # confirm before class
 ```

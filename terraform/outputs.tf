@@ -1,6 +1,6 @@
 output "data_bucket" {
   description = "In-region data bucket the project data is synced into."
-  value       = aws_s3_bucket.data.bucket
+  value       = data.aws_s3_bucket.data.bucket
 }
 
 output "exec_role_arn" {

@@ -17,13 +17,13 @@ resource "aws_iam_role_policy" "exec_bucket_access" {
         Effect = "Allow"
         # GetBucketAcl is required by SageMaker Feature Store's offline store.
         Action   = ["s3:ListBucket", "s3:GetBucketLocation", "s3:GetBucketAcl"]
-        Resource = aws_s3_bucket.data.arn
+        Resource = data.aws_s3_bucket.data.arn
       },
       {
         Sid      = "ObjectRW"
         Effect   = "Allow"
         Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-        Resource = "${aws_s3_bucket.data.arn}/*"
+        Resource = "${data.aws_s3_bucket.data.arn}/*"
       }
     ]
   })

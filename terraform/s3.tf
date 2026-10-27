@@ -1,48 +1,28 @@
-# In-region data bucket for the whole series: raw/ staged sources, processed/
-# pipeline output, ml/ train-val-test splits, clarify/ reports, canvas/.
+# The demo data bucket is deliberately NOT managed by Terraform.
 #
-# 00-setup/stage_dataset.py populates raw/ directly from the public sources
-# (NOAA GHCN is itself an S3 bucket, so that part is a server-side copy). There
-# is no cross-region sync step any more -- the previous comment here described
-# copying from a us-east-2 bucket that no longer exists.
-resource "aws_s3_bucket" "data" {
+# It used to be an aws_s3_bucket resource, which meant `terraform destroy` took
+# the bucket with it -- and with the bucket went 720 MB of staged GHCN/CEC data,
+# the processed pipeline output, the ML splits and the Clarify reports. About 25
+# minutes and a dollar of Glue to rebuild.
+#
+# Teardown happens constantly in a teaching repo: after every class, and every
+# time the Studio domain needs recreating. Tying "tear down the compute" to
+# "delete the data" is the wrong default. So the bucket now lives outside
+# Terraform's lifecycle entirely:
+#
+#   create it   -> python 00-setup/create_bucket.py   (idempotent, once)
+#   reference it -> the data source below
+#   destroy it  -> never, by Terraform. Only by hand, or by
+#                  cleanup/cleanup.ps1 -IncludeBucket if you really mean it.
+#
+# `terraform destroy` is therefore safe to run freely now. It removes the Studio
+# domain, the Canvas reaper, the budgets and the IAM policies, and leaves every
+# dataset where it is.
+#
+# NOTE: prevent_destroy was the obvious alternative and is the wrong tool here.
+# It does not protect the data so much as make `terraform destroy` fail
+# outright, which blocks teardown of everything ELSE in the stack -- including
+# the things that actually cost money.
+data "aws_s3_bucket" "data" {
   bucket = var.data_bucket_name
-
-  # Let `terraform destroy` remove the bucket even with objects in it.
-  #
-  # Normally this flag is dangerous and should not be set. It is correct HERE
-  # for one specific reason: everything in this bucket is disposable and
-  # re-creatable. 00-setup/stage_dataset.py rebuilds the whole raw/ tree from
-  # public sources (NOAA, Census, CEC) in a few minutes, and processed/ and ml/
-  # are derived from raw/. Nothing here is a system of record.
-  #
-  # Without it, teardown is a three-step dance -- empty the bucket by hand,
-  # then destroy, then discover the state is now stale -- and a teardown that
-  # is awkward is a teardown that gets skipped, which is how resources get left
-  # running after class.
-  force_destroy = true
-}
-
-resource "aws_s3_bucket_public_access_block" "data" {
-  bucket                  = aws_s3_bucket.data.id
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
-
-resource "aws_s3_bucket_ownership_controls" "data" {
-  bucket = aws_s3_bucket.data.id
-  rule {
-    object_ownership = "BucketOwnerEnforced"
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "data" {
-  bucket = aws_s3_bucket.data.id
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
 }
