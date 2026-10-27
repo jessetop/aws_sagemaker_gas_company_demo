@@ -516,6 +516,162 @@ whether or not anyone calls it. Notice the last line of this script is a delete.
 
 ---
 
+## Demo 12 — Pipelines and lineage: where did this model come from? (5 min)
+
+**Slot:** Day 2, Module 4 — pairs with **Lab 9: Pipelines + Model Registry**
+(Mod04 slide 23). Give it *before* the lab; the lab then builds what they just
+watched.
+**Baked:** ✅ `roi-smdemo-gas-pipeline`, execution **`p9khxwja52g2`**, run
+2026-10-27. All 10 steps Succeeded.
+
+**A student asked for this one.** It exists because somebody in the room wanted
+to see lineage, which is the best possible reason for a demo to exist — say so
+out loud.
+
+### The question this demo answers
+
+> *"Somebody hands you a model and asks what it was trained on. Not 'which
+> algorithm' — what **data**, which version, who approved it, and is it still
+> the one in production. If the answer is 'let me check my notebook', you don't
+> have an answer."*
+
+### Here's how you make it — the DAG
+
+Open `08-pipelines/build_pipeline.py` and show the ten steps. Don't read the
+code; read the **shape**:
+
+```
+PreprocessGasData        Processing     ml.m5.2xlarge
+DataBiasCheck            ClarifyCheck   ml.m5.large
+TrainGasModel            Training       ml.m5.large
+EvaluateModel            Processing     ml.m5.large   -> evaluation.json
+CheckAUC                 Condition      AUC >= 0.55
+   if passed:
+     CreateGasModel-RepackModel     Training
+     CreateGasModel-CreateModel     Model
+     ModelBiasCheck                 ClarifyCheck   + shadow endpoint
+     ModelExplainabilityCheck       ClarifyCheck   + shadow endpoint
+     RegisterGasModel               RegisterModel  -> version 2
+```
+
+**The step to point at is `CheckAUC`.** It's the only one that isn't compute:
+
+> *"That's a gate. If the model doesn't clear the bar, the register branch never
+> runs and nothing lands in the registry. The DAG refuses to promote a bad
+> model, and it refuses without a human in the loop. That's the difference
+> between a script that trains a model and a pipeline that governs one."*
+
+**Hit cancel:** the full run is ~36 minutes. Nobody watches that.
+
+### Here's one I made earlier — verified numbers
+
+Studio → **Pipelines → `roi-smdemo-gas-pipeline` → execution `p9khxwja52g2`**.
+The visual DAG renders with the condition branch drawn in, which is the picture
+worth more than the code.
+
+| Step | Wall clock | Result |
+|---|---|---|
+PreprocessGasData | 2m33s | train 6.0 MiB / validation 1.3 MiB / test 1.3 MiB |
+DataBiasCheck | 5m03s | pre-training baseline on `is_heating_season` |
+TrainGasModel | 3m18s | `pipelines-p9khxwja52g2-TrainGasModel-IGJ6PCZl4b` |
+EvaluateModel | 5m04s | **AUC 0.9261**, accuracy 0.8773 |
+CheckAUC | 0m00s | 0.9261 ≥ 0.55 → **passed** |
+RepackModel | 2m48s | |
+CreateGasModel | 0m01s | |
+ModelBiasCheck | 10m04s | post-training bias |
+ModelExplainabilityCheck | 17m35s | SHAP attributions |
+RegisterGasModel | 0m01s | **`roi-smdemo-gas-models` version 2, Approved** |
+
+**Worth 20 seconds, and it ties back to Demo 7:** this run scored **0.9261**.
+The standalone training job in Demo 6 scored **0.9235** — through a completely
+different code path (`08-pipelines/preprocess.py` instead of
+`shared/prepare_ml_data.py`).
+
+> *"Same answer twice, two different scripts. So the 0.92 is real — and the
+> story from this morning still holds: it's real and it's still the easy
+> question. Reproducibility doesn't make a metric honest. It just makes it
+> reproducible."*
+
+### The money shot — two versions, side by side
+
+Studio → **Model registry → `roi-smdemo-gas-models`**. There are two versions,
+both Approved, near-identical AUC. Open the **Lineage** tab on each.
+
+**Version 1** — you registered it by hand (`register_model_with_reports.py`).
+Its graph starts at a training job:
+
+```
+ml/gas/{train,validation}/ + sklearn:1.2-1
+  -> roi-smdemo-gas-train-2026-10-26-16-04-58-308
+  -> model.tar.gz
+  -> roi-smdemo-gas-models/1  (Approval + ModelLifeCycle actions)
+  -> 4 ModelDeployment actions
+```
+
+**Version 2** — the pipeline produced it. Its graph goes back a step further,
+to the data it was built from:
+
+```
+processed/visual-etl/
+  -> pipelines-p9khxwja52g2-PreprocessGasData-8TwHXhhTZ1
+  -> pipeline/{train,validation,test}
+  -> pipelines-p9khxwja52g2-TrainGasModel-IGJ6PCZl4b
+  -> model.tar.gz
+  -> roi-smdemo-gas-models/2  + bias & SHAP baselines + the gate that let it in
+```
+
+> *"Same model, essentially. One of them can tell you where it came from."*
+
+That contrast *is* the demo. Don't explain lineage as a feature — show two
+graphs and let the room notice that one is shorter.
+
+### The bit that gets the "huh" — lineage outlives the resource
+
+All four endpoints in version 1's graph are **deleted**. `list-endpoints` on
+this account returns nothing. The graph still has them.
+
+> *"Those endpoints don't exist. The account still knows they existed, what was
+> deployed to them, and which model version it came from. That's not a log you
+> have to remember to write — SageMaker records it whether you ask or not.
+> Deleting the endpoint doesn't delete the fact that you deployed it."*
+
+For a regulated utility that is the whole pitch, and it lands better as a
+surprise than as a bullet point.
+
+### Cost — and a correction worth passing on
+
+`08-pipelines/README.md` said "a few dollars per full execution." By
+instance-second arithmetic on the durations above, the real figure is **about
+$0.16** — the biggest line item is SHAP at ~3½ cents of Clarify plus ~3½ cents
+of shadow endpoint.
+
+🟢 **Both shadow endpoints tore themselves down.** Verified: `list-endpoints` is
+empty after the run. Worth saying, because Demo 10 warns that a *failed* Clarify
+job can orphan one — a succeeded one cleans up after itself.
+
+### Re-running it
+
+```bash
+python 08-pipelines/build_pipeline.py            # upsert only, free, no compute
+python 08-pipelines/build_pipeline.py --start    # ~36 min, ~$0.16
+```
+
+Delete the model `roi-smdemo-gas-pipeline-model` first (the cleanup script
+does), or `CreateGasModel` fails on the name collision.
+
+**Two Windows/SDK traps already fixed in the script** — both cost a debugging
+session, so don't "simplify" them away:
+
+1. The SDK writes `_repack_script_launcher.sh` in text mode, so on Windows every
+   `\n` becomes `\r\n` and the Linux repack container dies with `#015: not
+   found`. `_patch_repack_launcher_lf()` rewrites it with `newline="\n"`.
+2. `ModelStep` ignores the `name=` you give the model and generates its own at
+   run time. The Clarify steps must reference
+   `step_create_model.properties.ModelName`, not the literal — a literal fails
+   with *"Could not find model ..."*.
+
+---
+
 ## Demo 13 — AI-DLC: where all of this came from (5 min)
 
 **Slot:** Day 3, Module 6 or Module 7 — the only demo-free stretch in the whole
@@ -589,6 +745,7 @@ Check before you commit to a demo in a running class.
 | 9 | Autopilot | ✅ verified | ✅ `roi-smdemo-gas-autopilot` | ✅ from artifact — never re-run live ($9.26) |
 | 10 | Clarify | ✅ ported | see `--status` | check |
 | 11 | Deployment | ✅ ported | live | ⚠️ run once first |
+| 12 | Pipelines + lineage | ✅ verified | ✅ `p9khxwja52g2`, 10/10 steps, v2 registered | ✅ |
 | 13 | AI-DLC (Day 3) | n/a — a method, not code | ✅ spec + `ai-dlc/transcript/` | ✅ $0, rehearse once |
 
 ### Two AWS API traps the prebaker had to work around
@@ -623,6 +780,11 @@ you into a class mistrusting a correct `--status`.
    `precip_reported` (derived, not stored) and for `obs_year`/`obs_month`
    (Hive partition columns that live in directory names, not in the files).
    Both now fixed, which also unblocks the Pipeline step.
-4. **Run Demo 11 once offline** before trusting it live.
-5. **Leave Autopilot out of the prebake list deliberately** — `--all` must
+4. ~~Run the Pipeline once~~ — **done 2026-10-27.** First execution ever,
+   `p9khxwja52g2`, all 10 steps Succeeded, no intervention. That retroactively
+   validates the `preprocess.py` fix above through a second code path, and it is
+   what Demo 12 shows. The README's "a few dollars" cost estimate was ~20× high;
+   corrected to ~$0.16.
+5. **Run Demo 11 once offline** before trusting it live.
+6. **Leave Autopilot out of the prebake list deliberately** — `--all` must
    never trigger a $9.26 job. Launch it by hand when the artifact is missing.

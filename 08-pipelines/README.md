@@ -11,18 +11,25 @@ python 08-pipelines/build_pipeline.py
 python 08-pipelines/build_pipeline.py --start
 ```
 
-- `build_pipeline.py` — defines the pipeline (no compute)
-- `build_pipeline.py` — executes it
+- `build_pipeline.py` — upserts the definition (no compute, free)
+- `build_pipeline.py --start` — executes it
 
 ## Creates
 
 | | |
 |---|---|
 pipeline | `<prefix>-pipeline`, plus `pipeline/` outputs in S3
+registry | a new **Approved** version in `<prefix>-models`
 
 ## Cost
 
-A few dollars per full execution.
+**~$0.16 per full execution**, ~36 minutes wall clock. Measured by
+instance-second arithmetic over execution `p9khxwja52g2` (2026-10-27); this file
+previously estimated "a few dollars," which was ~20× high. The two Clarify model
+checks dominate — each runs a shadow endpoint alongside the processing job.
+
+Both shadow endpoints tear themselves down on success. A *failed* Clarify step
+can orphan one, so check `list-endpoints` if a run breaks.
 
 ## Notes
 
