@@ -104,7 +104,7 @@ variable "canvas_max_idle_minutes" {
 variable "canvas_max_age_minutes" {
   description = "Hard cap: delete a Canvas app this many minutes after creation even if it still looks active. The backstop for a session left open on a second monitor. 0 disables. Keep it comfortably longer than your longest teaching block."
   type        = number
-  default     = 600
+  default     = 180
 }
 
 variable "canvas_reaper_regions" {

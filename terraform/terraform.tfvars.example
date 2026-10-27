@@ -1,11 +1,6 @@
 # COPY THIS TO terraform.tfvars AND EDIT. terraform.tfvars is gitignored
 # so your account id and alert email never land in a public repo.
 #
-# NOTHING IS DEPLOYED RIGHT NOW. Verified 2026-10-23: the data bucket does not
-# exist in any region, and `list-domains` returns nothing in us-east-1 or
-# us-east-2. The July 2026 teardown removed all of it; only the execution role
-# roi-smdemo-exec-role survived. So this is a from-scratch apply, not an update.
-#
 # Keep name_prefix in step with SMDEMO_PREFIX in ../demo.env, or the cleanup
 # scripts will not find what Terraform created.
 
@@ -42,11 +37,10 @@ create_sagemaker_ai_domain = true
 # budget existed and did not help, because a budget only emails you -- it never
 # stops spend.
 #
-# The reaper is the thing that actually stops it, and it has never been
-# deployed: there is no canvas-reaper Lambda in either region today. Deploying
-# it costs essentially nothing (a 128MB Lambda running hourly sits inside the
-# always-free tier) and it is the single highest-value resource in this file.
-# Apply it BEFORE the parts of the series that can run up a bill.
+# The reaper is the thing that actually stops it. It costs essentially nothing
+# (a 128MB Lambda running hourly sits inside the always-free tier) and it is the
+# single highest-value resource in this file. Apply it BEFORE the parts of the
+# series that can run up a bill.
 
 canvas_reaper_enabled  = true
 canvas_reaper_schedule = "rate(1 hour)"
@@ -60,7 +54,7 @@ canvas_max_idle_minutes = 60
 # Hard cap regardless of activity: the backstop for a session left open on a
 # second monitor. 10 hours -- comfortably longer than any teaching block, and
 # it turns a $200 accident into at most a few dollars.
-canvas_max_age_minutes = 600
+canvas_max_age_minutes = 180
 
 # Canvas is REGION-SCOPED and the June overrun was in us-east-2 while the guard
 # watched us-east-1. Sweep everywhere you might open Canvas.
