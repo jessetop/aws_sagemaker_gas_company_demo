@@ -119,10 +119,22 @@ variable "canvas_reaper_dry_run" {
   default     = false
 }
 
-variable "kill_app_types" {
-  description = "Comma-separated SageMaker AppTypes the reaper will delete. Canvas is the $50/day culprit; JupyterLab/KernelGateway intentionally excluded by default."
+variable "idle_minutes_by_type" {
+  description = "Per-AppType idle thresholds for the reaper, e.g. \"JupyterLab=30\". SageMaker's own native idle shutdown has a hard floor of 60 minutes (IdleTimeoutInMinutes min=60), so anything tighter has to come from the Lambda."
   type        = string
-  default     = "Canvas"
+  default     = "JupyterLab=30,CodeEditor=30"
+}
+
+variable "max_age_minutes_by_type" {
+  description = "Per-AppType hard age caps for the reaper, same syntax. Empty means fall back to canvas_max_age_minutes."
+  type        = string
+  default     = ""
+}
+
+variable "kill_app_types" {
+  description = "Comma-separated SageMaker AppTypes the reaper will delete. Canvas is the $50/day culprit. JupyterLab is included with a tighter 30-minute idle threshold (see idle_minutes_by_type) because AWS's native idle shutdown cannot go below 60."
+  type        = string
+  default     = "Canvas,JupyterLab"
 }
 
 # ---- Spend guardrails (see budget.tf) --------------------------------------

@@ -64,6 +64,27 @@ resource "aws_sagemaker_domain" "ai" {
       default_resource_spec {
         instance_type = "ml.t3.medium"
       }
+
+      # SageMaker's OWN idle shutdown, which is the right tool for JupyterLab.
+      #
+      # The Canvas reaper deliberately does not touch JupyterLab: deleting a
+      # notebook app kills the kernel and loses unsaved in-memory state. Native
+      # idle shutdown is graceful by comparison -- it stops the app but the
+      # space's files survive, so you reopen and your notebooks are there.
+      #
+      # It is not free to skip: ml.t3.medium is only ~$0.05/hr, but left running
+      # a month that is ~$36 for an idle notebook.
+      app_lifecycle_management {
+        idle_settings {
+          lifecycle_management = "ENABLED"
+          # Two hours: long enough to survive a lunch break without killing a
+          # session you are coming back to.
+          idle_timeout_in_minutes = 120
+          # Bounds on what a user may choose per-space in the Studio UI.
+          min_idle_timeout_in_minutes = 60
+          max_idle_timeout_in_minutes = 480
+        }
+      }
     }
 
     space_storage_settings {

@@ -31,8 +31,13 @@ Env vars (set by Terraform):
                               otherwise only DOMAIN_ID is watched
     DOMAIN_ID                 single domain to watch when WATCH_ALL_DOMAINS != true
     KILL_APP_TYPES            comma-separated AppTypes to reap (e.g. "Canvas")
-    CANVAS_MAX_IDLE_MINUTES   idle threshold before deletion
-    CANVAS_MAX_AGE_MINUTES    hard age cap regardless of activity (0 disables)
+    CANVAS_MAX_IDLE_MINUTES   idle threshold for Canvas apps
+    CANVAS_MAX_AGE_MINUTES    hard age cap for Canvas regardless of activity (0 off)
+    IDLE_MINUTES_BY_TYPE      per-AppType overrides, e.g. "JupyterLab=30,CodeEditor=30".
+                              SageMaker's own native idle shutdown has a hard
+                              floor of 60 minutes, so anything tighter than that
+                              has to come from here.
+    MAX_AGE_MINUTES_BY_TYPE   per-AppType hard age caps, same syntax
     DRY_RUN                   "true" to log decisions without deleting
 """
 
@@ -50,6 +55,21 @@ def _minutes_since(ts) -> float:
     if ts is None:
         return float("inf")
     return (_now_utc() - ts).total_seconds() / 60.0
+
+
+def _by_type(var: str) -> dict:
+    """Parse "JupyterLab=30,CodeEditor=45" into {"JupyterLab": 30.0, ...}."""
+    out = {}
+    for part in os.environ.get(var, "").split(","):
+        part = part.strip()
+        if not part or "=" not in part:
+            continue
+        k, _, v = part.partition("=")
+        try:
+            out[k.strip()] = float(v.strip())
+        except ValueError:
+            print(f"  WARN ignoring unparseable {var} entry: {part!r}")
+    return out
 
 
 def _regions() -> list:
@@ -110,11 +130,17 @@ def handler(event, context):
         for t in os.environ.get("KILL_APP_TYPES", "Canvas").split(",")
         if t.strip()
     }
-    max_idle = float(os.environ.get("CANVAS_MAX_IDLE_MINUTES", "60"))
-    max_age = float(os.environ.get("CANVAS_MAX_AGE_MINUTES", "0"))
+    # Canvas keeps its own vars for backwards compatibility; everything else
+    # comes from the per-type maps, falling back to the Canvas numbers.
+    default_idle = float(os.environ.get("CANVAS_MAX_IDLE_MINUTES", "60"))
+    default_age = float(os.environ.get("CANVAS_MAX_AGE_MINUTES", "0"))
+    idle_by_type = _by_type("IDLE_MINUTES_BY_TYPE")
+    age_by_type = _by_type("MAX_AGE_MINUTES_BY_TYPE")
     dry_run = os.environ.get("DRY_RUN", "").lower() == "true"
+    print(f"thresholds: default idle={default_idle:.0f}m age={default_age:.0f}m"
+          f" | per-type idle={idle_by_type or '{}'} age={age_by_type or '{}'}")
 
-    killed, kept, errors = [], [], []
+    killed, kept, skipped, errors = [], [], [], []
 
     for region in _regions():
         sm = boto3.client("sagemaker", region_name=region)
@@ -156,25 +182,40 @@ def handler(event, context):
 
             if app_type not in kill_types:
                 continue
-            # Pending apps are not billing yet and have no activity record; the
-            # next sweep will catch them once they reach InService.
+            # Pending apps are not billing yet and have no activity record;
+            # Deleting/Deleted/Failed are already on their way out. The next
+            # sweep catches anything that reaches InService.
+            #
+            # These used to be skipped silently, which meant the summary line
+            # did not reconcile -- "2 apps watched, killed=1 kept=0" leaves you
+            # wondering what happened to the second one. A cost guard you cannot
+            # audit is a cost guard you will not trust.
             if status in ("Deleting", "Deleted", "Failed", "Pending"):
+                skipped.append(f"{region}/{app_type}/{name} [{status}]")
+                print(f"[{region}] SKIP {app_type}/{name} [{status}] - transitioning")
                 continue
 
             scope = _owner_scope(app)
             if not scope:
+                skipped.append(f"{region}/{app_type}/{name} [no owner scope]")
                 print(f"[{region}] SKIP (no owner scope): {app_type}/{name}")
                 continue
 
             idle, source = _activity(sm, app, scope)
             age = _minutes_since(app.get("CreationTime"))
+            max_idle = idle_by_type.get(app_type, default_idle)
+            max_age = age_by_type.get(app_type, default_age)
             tag = (
                 f"{region}/{app.get('DomainId')}:{app_type}/{name} "
-                f"({status}, idle {idle:.0f}m via {source}, age {age:.0f}m)"
+                f"({status}, idle {idle:.0f}/{max_idle:.0f}m via {source}, "
+                f"age {age:.0f}m)"
             )
 
             too_idle = idle >= max_idle
             too_old = max_age > 0 and age >= max_age
+            # Deleting a JupyterLab app kills the kernel: files on the space
+            # volume survive, in-memory state does not. That is acceptable when
+            # the app is genuinely IDLE, which is what we are measuring.
             if not (too_idle or too_old):
                 kept.append(tag)
                 print(f"[{region}] KEEP {tag}")
@@ -201,8 +242,10 @@ def handler(event, context):
                 print(f"[{region}] ERROR deleting {tag}: {exc}")
                 errors.append(f"{tag}: {exc}")
 
+    # Counts must reconcile against what was swept, or the log cannot be audited.
     print(
-        f"reaper done: killed={len(killed)} kept={len(kept)} errors={len(errors)} "
+        f"reaper done: killed={len(killed)} kept={len(kept)} "
+        f"skipped={len(skipped)} errors={len(errors)} "
         f"regions={','.join(_regions())}"
     )
-    return {"killed": killed, "kept": kept, "errors": errors}
+    return {"killed": killed, "kept": kept, "skipped": skipped, "errors": errors}

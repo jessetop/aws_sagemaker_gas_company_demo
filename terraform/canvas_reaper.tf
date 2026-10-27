@@ -28,6 +28,8 @@ resource "aws_lambda_function" "canvas_reaper" {
       REAPER_REGIONS          = var.canvas_reaper_regions
       CANVAS_MAX_IDLE_MINUTES = tostring(var.canvas_max_idle_minutes)
       CANVAS_MAX_AGE_MINUTES  = tostring(var.canvas_max_age_minutes)
+      IDLE_MINUTES_BY_TYPE    = var.idle_minutes_by_type
+      MAX_AGE_MINUTES_BY_TYPE = var.max_age_minutes_by_type
       DRY_RUN                 = var.canvas_reaper_dry_run ? "true" : "false"
     }
   }

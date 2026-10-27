@@ -67,7 +67,22 @@ canvas_reaper_dry_run = false
 # Canvas only. JupyterLab is excluded on purpose: killing a notebook mid-lesson
 # loses unsaved work, and JupyterLab on t3.medium is cheap (~$2.50 for all of
 # June). Add "JupyterLab" here only if you want the stricter behaviour.
-kill_app_types = "Canvas"
+kill_app_types = "Canvas,JupyterLab"
+# JupyterLab is reaped too, but on a TIGHTER idle threshold than Canvas.
+#
+# Why the Lambda rather than SageMaker's own idle shutdown: the native setting
+# (AppLifecycleManagement.IdleSettings) has a hard floor of 60 minutes --
+# IdleTimeoutInMinutes has min=60 in the API model. 30 minutes is only reachable
+# from the reaper.
+#
+# Both layers are enabled on purpose: the Lambda at 30 minutes is the real
+# guard, and the native 60-minute shutdown is a graceful backstop if the Lambda
+# ever stops running. Deleting a JupyterLab app kills the kernel -- files on the
+# space volume survive, in-memory state does not -- which is acceptable for an
+# app that has been idle half an hour.
+idle_minutes_by_type    = "JupyterLab=30,CodeEditor=30"
+max_age_minutes_by_type = ""
+
 
 # ---- Budgets + anomaly detection (budget.tf) -------------------------------
 # REQUIRED: set this or no budget, alarm, or anomaly monitor is created at all.
