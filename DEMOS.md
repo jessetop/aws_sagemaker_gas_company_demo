@@ -425,7 +425,23 @@ the first."*
 
 ---
 
-## Demo 9 — Clarify: bias and explainability (5 min)
+## Demo 9 — Autopilot / Canvas (5 min)
+
+**Slot:** wherever AutoML fits.
+**Baked:** run `09-autopilot/launch_autopilot.py` ahead of time (not yet in the
+prebake list — it takes ~30 min).
+
+**The framing that lands:** Autopilot is the *engine*; there are three front
+doors — SDK (code), Studio UI (low-code), Canvas (no-code). Same ranked
+leaderboard out of all three.
+
+**Here's one I made earlier:** the candidate leaderboard.
+
+⚠️ Canvas session — kill it afterwards.
+
+---
+
+## Demo 10 — Clarify: bias and explainability (5 min)
 
 **Slot:** Module 3, Design/Governance.
 **Baked:** `clarify`.
@@ -449,7 +465,7 @@ endpoint. We sample 300 rows.
 
 ---
 
-## Demo 10 — Deployment and inference (5 min)
+## Demo 11 — Deployment and inference (5 min)
 
 **Slot:** Day 2, Module 4.
 **Baked:** nothing — this one runs live, and should.
@@ -467,22 +483,6 @@ whether or not anyone calls it. Notice the last line of this script is a delete.
 
 ---
 
-## Demo 11 — Autopilot / Canvas (5 min)
-
-**Slot:** wherever AutoML fits.
-**Baked:** run `09-autopilot/launch_autopilot.py` ahead of time (not yet in the
-prebake list — it takes ~30 min).
-
-**The framing that lands:** Autopilot is the *engine*; there are three front
-doors — SDK (code), Studio UI (low-code), Canvas (no-code). Same ranked
-leaderboard out of all three.
-
-**Here's one I made earlier:** the candidate leaderboard.
-
-⚠️ Canvas session — kill it afterwards.
-
----
-
 ## Readiness
 
 Check before you commit to a demo in a running class.
@@ -491,15 +491,15 @@ Check before you commit to a demo in a running class.
 |---|---|---|---|---|
 | 1 | Studio tour | n/a | n/a | ✅ |
 | 2 | Data Wrangler | ⚠️ flow is a stub | ✅ data | ⚠️ live-build only |
-| 3 | Spark on EMR | ❌ not ported | ✅ data | ❌ |
+| 3 | PySpark, serverless (Glue) | ✅ verified | ✅ notebook + Glue run | ✅ |
 | 4 | SageMaker Processing | ⚠️ partial | ✅ splits | ⚠️ talk-through |
 | 5 | Feature Store | ✅ verified | ✅ `roi-smdemo-gas-features` | ✅ |
 | 6 | Training | ✅ verified | ✅ | ✅ |
 | 7 | Experiments + metric arc | ✅ verified | ✅ baseline + 4 HPO trials | ✅ |
 | 8 | HPO | ✅ verified | ✅ `roi-smdemo-gas-hpo-261026-1514` | ✅ |
-| 9 | Clarify | ✅ ported | see `--status` | check |
-| 10 | Deployment | ✅ ported | live | ⚠️ run once first |
-| 11 | Autopilot | ✅ ported | not baked | ❌ |
+| 9 | Autopilot | ✅ ported | not baked | ❌ |
+| 10 | Clarify | ✅ ported | see `--status` | check |
+| 11 | Deployment | ✅ ported | live | ⚠️ run once first |
 
 ### Two AWS API traps the prebaker had to work around
 
@@ -529,5 +529,5 @@ you into a class mistrusting a correct `--status`.
 2. **Port module 2 (EMR)** — Demo 3 is the only one with no working code.
 3. **Port `08-pipelines/preprocess.py`** — makes Demo 4 a real Processing job
    rather than a talk-through, and unblocks Pipelines.
-4. **Run Demo 10 once offline** before trusting it live.
+4. **Run Demo 11 once offline** before trusting it live.
 5. **Add Autopilot to the prebake list.**

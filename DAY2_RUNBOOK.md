@@ -176,7 +176,65 @@ roi-smdemo-gas-hpo-261026-1514-001-4138bb7d
 
 ---
 
-## Demo 10 — Deployment and inference (5 min)
+## Demo 9 — Autopilot (5 min)
+**Wherever AutoML fits** · ✅ **verified**
+
+### Where to go
+**SageMaker AI console → Training → AutoML jobs** → `roi-smdemo-gas-autopilot`
+→ the candidate leaderboard.
+
+### What you're looking at (verified)
+
+10 candidates, ENSEMBLING mode, target `high_demand`, 15,000 rows.
+
+| Rank | Candidate | Accuracy |
+|---|---|---|
+1 | `WeightedEnsemble-L3-FULL` | **0.8800** |
+2-8 | `WeightedEnsemble-L2-FULL` (×7) | 0.8687 |
+9 | `WeightedEnsemble-L2-FULL` | 0.8664 |
+10 | `WeightedEnsemble-L2-FULL` | 0.8594 |
+
+### The framing
+> *"Autopilot is the engine. Three front doors to it: the SDK if you write code,
+> the Studio UI for low-code, Canvas for no-code. All three produce this same
+> leaderboard. So 'should we use Autopilot or Canvas' is a malformed question —
+> Canvas IS Autopilot with a different front door."*
+
+### The comparison that lands
+
+Put these two numbers next to each other:
+
+| | Accuracy |
+|---|---|
+Autopilot — 10 candidates, 3-layer weighted ensemble | **0.8800** |
+Our hand-built GradientBoosting — one model, 145 seconds | **0.8794** |
+
+> *"Six ten-thousandths of a point. Autopilot searched ten candidates and
+> stacked a three-layer ensemble to match a single scikit-learn model we wrote
+> in an afternoon. Look at the spread too — 0.859 to 0.880 across all ten.
+> Everything works about equally well on this problem."*
+
+That echoes the HPO finding from Demo 8 and sets up the real point:
+
+> *"And here's the thing. Autopilot inherited our label definition. So it is
+> confidently and very efficiently solving the same slightly-wrong problem we
+> were — the one we found in Demo 7, where seventy percent of the model was 'is
+> it winter'. AutoML optimises the model. It cannot tell you that you asked the
+> wrong question. That is still your job, and it is the only part of this that
+> isn't automatable."*
+
+Strongest closing line available for an AutoML segment, and it only works
+because they watched you find the wrong question earlier.
+
+⚠️ If you demo this through Canvas rather than the console, that's a billable
+session — `powershell -File cleanup/kill_canvas.ps1` after. Note that opening
+Canvas also auto-creates an EMR Serverless app
+(`sm-canvas-data-wrangler-emr-app-<profile>`); it doesn't bill at rest, and
+`cleanup.ps1` removes it.
+
+---
+
+## Demo 11 — Deployment and inference (5 min)
 **Module 4, the main event** · **Runs LIVE** — ✅ verified end to end
 
 The exception to the cooking show: this one is fast enough to run for real, and
@@ -297,65 +355,9 @@ Populated from the real training metrics.
 ```bash
 python 07-deployment/monitor_demo_endpoint.py --delete
 ```
-Say it out loud as you do it. It reinforces Demo 10's lesson.
+Say it out loud as you do it. It reinforces Demo 11's lesson.
 
 ---
-
-## Demo 11 — Autopilot (5 min)
-**Wherever AutoML fits** · ✅ **verified**
-
-### Where to go
-**SageMaker AI console → Training → AutoML jobs** → `roi-smdemo-gas-autopilot`
-→ the candidate leaderboard.
-
-### What you're looking at (verified)
-
-10 candidates, ENSEMBLING mode, target `high_demand`, 15,000 rows.
-
-| Rank | Candidate | Accuracy |
-|---|---|---|
-1 | `WeightedEnsemble-L3-FULL` | **0.8800** |
-2-8 | `WeightedEnsemble-L2-FULL` (×7) | 0.8687 |
-9 | `WeightedEnsemble-L2-FULL` | 0.8664 |
-10 | `WeightedEnsemble-L2-FULL` | 0.8594 |
-
-### The framing
-> *"Autopilot is the engine. Three front doors to it: the SDK if you write code,
-> the Studio UI for low-code, Canvas for no-code. All three produce this same
-> leaderboard. So 'should we use Autopilot or Canvas' is a malformed question —
-> Canvas IS Autopilot with a different front door."*
-
-### The comparison that lands
-
-Put these two numbers next to each other:
-
-| | Accuracy |
-|---|---|
-Autopilot — 10 candidates, 3-layer weighted ensemble | **0.8800** |
-Our hand-built GradientBoosting — one model, 145 seconds | **0.8794** |
-
-> *"Six ten-thousandths of a point. Autopilot searched ten candidates and
-> stacked a three-layer ensemble to match a single scikit-learn model we wrote
-> in an afternoon. Look at the spread too — 0.859 to 0.880 across all ten.
-> Everything works about equally well on this problem."*
-
-That echoes the HPO finding from Demo 8 and sets up the real point:
-
-> *"And here's the thing. Autopilot inherited our label definition. So it is
-> confidently and very efficiently solving the same slightly-wrong problem we
-> were — the one we found in Demo 7, where seventy percent of the model was 'is
-> it winter'. AutoML optimises the model. It cannot tell you that you asked the
-> wrong question. That is still your job, and it is the only part of this that
-> isn't automatable."*
-
-Strongest closing line available for an AutoML segment, and it only works
-because they watched you find the wrong question earlier.
-
-⚠️ If you demo this through Canvas rather than the console, that's a billable
-session — `powershell -File cleanup/kill_canvas.ps1` after. Note that opening
-Canvas also auto-creates an EMR Serverless app
-(`sm-canvas-data-wrangler-emr-app-<profile>`); it doesn't bill at rest, and
-`cleanup.ps1` removes it.
 
 ## Day 2 running order
 
@@ -364,9 +366,9 @@ Canvas also auto-creates an EMR Serverless app
 Module 4 open | 6 — Training jobs | 5 | |
 Module 4 | 7 — Experiments + metric arc | 5 | **the keeper** |
 Module 4 | 8 — HPO | 5 | |
-Module 4 | 10 — Deploy + infer | 5 | runs live |
+Module 4 | 11 — Deploy + infer | 5 | runs live |
 Module 5 | 12 — Monitor + Model Card | 5 | needs morning endpoint |
-flexible | 11 — Autopilot | 5 | |
+flexible | 9 — Autopilot | 5 | |
 
 ~30 minutes across the day.
 
@@ -393,7 +395,7 @@ If `verify_teardown.py` reports anything, it tells you the command to fix it.
 |---|---|
 Empty console panel | **Check the region** — N. Virginia |
 `--model-data` error | Shouldn't happen now; both deploy scripts resolve it themselves |
-Endpoint stuck Creating | Give it 8 min; talk over it or move to Demo 11 |
+Endpoint stuck Creating | Give it 8 min; talk over it or move to Demo 9 |
 Monitor endpoint missing | You skipped the morning step — run `monitor_demo_endpoint.py` |
 Experiments panel empty | `python shared/populate_studio_classic.py` |
 Any permissions error | `python 00-setup/preflight.py` names the fix |

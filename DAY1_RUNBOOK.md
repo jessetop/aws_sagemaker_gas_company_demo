@@ -370,7 +370,7 @@ That last clause is the whole product. Don't skip it.
 
 ---
 
-## Demo 9 — Clarify (5 min)
+## Demo 10 — Clarify (5 min)
 **Module 3, Design & Governance — Day 1 afternoon** · **Baked:** `clarify`
 
 ### Where to go
@@ -405,10 +405,10 @@ Then the SHAP section.
 |---|---|---|---|
 after Module 1 Setup | 1 — Studio + the data | 5 | ✅ |
 Module 2, tool 1 | 2 — Data Wrangler | 5 | ⚠️ live-build; no saved flow |
-Module 2, tool 2 | 3 — PySpark serverless | 5 | ⏳ verifying on Glue |
+Module 2, tool 2 | 3 — PySpark serverless | 5 | ✅ verified on Glue |
 Module 2, tool 3 | 4 — Processing | 5 | ⚠️ talk-through only |
 Module 2, tool 4 | 5 — Feature Store | 5 | ✅ |
-Module 3 afternoon | 9 — Clarify | 5 | ⏳ baking |
+Module 3 afternoon | 10 — Clarify | 5 | ⏳ baking |
 
 Six interludes, ~30 minutes total across a 6.75-hour day. That's the right
 dosage — they're punctuation, not a parallel course.
