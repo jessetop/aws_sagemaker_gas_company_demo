@@ -40,6 +40,31 @@ python 07-deployment/monitor_demo_endpoint.py
 
 ---
 
+## Get the notebooks into Studio
+
+Do this once, before class. The repo is public, so Studio needs no credentials.
+
+1. Studio -> **JupyterLab** -> run your space (it auto-stops after 30 min idle;
+   "Run space" brings it back with your files intact).
+2. **File -> New -> Terminal**, then:
+
+```bash
+git clone https://github.com/jessetop/aws_sagemaker_gas_company_demo.git
+cd aws_sagemaker_gas_company_demo && git pull        # re-run just the pull on later days
+```
+
+3. The notebooks are then two clicks away in the file browser:
+
+| Demo | Notebook |
+|---|---|
+3 - PySpark on Glue | `aws_sagemaker_gas_company_demo/02-processing/pyspark-deep-dive/gas_spark_deep_dive.ipynb` |
+6a - Built-in algorithm (RCF) | `aws_sagemaker_gas_company_demo/04-training/builtin-rcf/rcf_builtin.ipynb` |
+
+Nothing needs editing: both notebooks discover the bucket, account and role at
+runtime. There is no copy-paste step in any demo.
+
+---
+
 ## Recap the spine in 30 seconds
 
 > *"Yesterday we took two hundred million weather observations down to 1.67
@@ -57,11 +82,24 @@ python 07-deployment/monitor_demo_endpoint.py
 > (Clarify), and renumbering seven demos an hour before class was not worth it.
 > Say the word after class and it becomes a clean Demo 6.
 
-### Where to go
-1. **SageMaker AI console → Training → Training jobs**
-2. `roi-smdemo-gas-rcf-261027-0750` → **Completed**
-3. Scroll to **Algorithm** — point at the image URI:
-   `382416733822.dkr.ecr.us-east-1.amazonaws.com/randomcutforest:1`
+### Where to go — this one is a NOTEBOOK demo
+
+The slide says *launch a notebook, import it in Studio, set up the libraries,
+train*. So run it from the notebook, not the console:
+
+**Studio → JupyterLab →** `aws_sagemaker_gas_company_demo/04-training/builtin-rcf/rcf_builtin.ipynb`
+
+14 cells, every one executed against this account before class. Section 1 sets
+up, 2 shows the label being deleted, 3 is the one-line "set up the libraries"
+beat, 4 launches the job, 5 pulls the finished one.
+
+**The 5-minute path:** run 1 → 2 → 3, talk through 4 while it starts, then
+jump to 5. Do not wait for the job.
+
+Console view if you prefer it, or to show the job afterwards:
+**SageMaker AI → Training → Training jobs →** `roi-smdemo-gas-rcf-261027-0750`
+→ **Algorithm** — point at the image URI
+`382416733822.dkr.ecr.us-east-1.amazonaws.com/randomcutforest:1`
 
 ### What you're looking at (verified)
 

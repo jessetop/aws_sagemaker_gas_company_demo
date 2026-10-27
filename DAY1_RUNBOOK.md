@@ -58,6 +58,31 @@ python 00-setup/preflight.py --links
 
 ---
 
+## Get the notebooks into Studio
+
+Do this once, before class. The repo is public, so Studio needs no credentials.
+
+1. Studio -> **JupyterLab** -> run your space (it auto-stops after 30 min idle;
+   "Run space" brings it back with your files intact).
+2. **File -> New -> Terminal**, then:
+
+```bash
+git clone https://github.com/jessetop/aws_sagemaker_gas_company_demo.git
+cd aws_sagemaker_gas_company_demo && git pull        # re-run just the pull on later days
+```
+
+3. The notebooks are then two clicks away in the file browser:
+
+| Demo | Notebook |
+|---|---|
+3 - PySpark on Glue | `aws_sagemaker_gas_company_demo/02-processing/pyspark-deep-dive/gas_spark_deep_dive.ipynb` |
+6a - Built-in algorithm (RCF) | `aws_sagemaker_gas_company_demo/04-training/builtin-rcf/rcf_builtin.ipynb` |
+
+Nothing needs editing: both notebooks discover the bucket, account and role at
+runtime. There is no copy-paste step in any demo.
+
+---
+
 ## The spine — say this once, at the start
 
 Draw this on the board and leave it up all day. Every demo refers back to it.
