@@ -22,7 +22,12 @@ this differs from shared/prepare_ml_data.py, which does one-hot for the
 standalone training path.
 
 SageMaker Processing contract:
-  input  : /opt/ml/processing/input                      (processed parquet)
+  input  : /opt/ml/processing/input/data                 (processed parquet)
+           NOTE the /data suffix. The SDK mounts this script itself at
+           /opt/ml/processing/input/code/, so reading the parent as a
+           parquet dataset tries to parse the .py file and dies with
+           "Parquet magic bytes not found in footer". Data gets its own
+           subdirectory to keep the two apart.
   outputs: /opt/ml/processing/output/{train,validation,test}
 """
 
@@ -30,7 +35,7 @@ import os
 
 import pandas as pd
 
-IN_DIR = "/opt/ml/processing/input"
+IN_DIR = "/opt/ml/processing/input/data"
 OUT = "/opt/ml/processing/output"
 
 # Fixed, deterministic schema (label first) - shared with build_pipeline.py headers.
@@ -70,9 +75,18 @@ def main() -> None:
     print(f"input files: {len(files)}")
 
     cols = FEATURES + [LABEL_SOURCE] + GROUP_COLS
-    df = pd.concat(
-        [pd.read_parquet(f, columns=cols) for f in files], ignore_index=True
-    )
+
+    # Read the whole mounted directory as ONE parquet dataset rather than file
+    # by file. Two reasons, both of which used to make this step fail:
+    #
+    #   * obs_year and obs_month are HIVE PARTITION columns -- they exist in
+    #     the directory names (obs_year=2015/obs_month=1), not inside the
+    #     files. A per-file read cannot see them and pyarrow raises "field not
+    #     found". Reading the dataset lets pyarrow reconstruct them from paths.
+    #   * precip_reported is DERIVED below, not stored, so asking the reader
+    #     for it is also a missing field.
+    read_cols = [c for c in cols if c != "precip_reported"]
+    df = pd.read_parquet(IN_DIR, columns=read_cols)
     print(f"rows: {len(df):,}")
 
     # ---- label: top-quartile therms WITHIN each county --------------------
