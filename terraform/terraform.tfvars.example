@@ -1,0 +1,97 @@
+# COPY THIS TO terraform.tfvars AND EDIT. terraform.tfvars is gitignored
+# so your account id and alert email never land in a public repo.
+#
+# Keep name_prefix in step with SMDEMO_PREFIX in ../demo.env, or the cleanup
+# scripts will not find what Terraform created.
+
+profile          = "default"
+region           = "us-east-1"
+account_id       = "000000000000"
+name_prefix      = "roi-smdemo-gas"
+data_bucket_name = "roi-smdemo-000000000000-us-east-1"
+exec_role_name   = "roi-smdemo-exec-role"
+
+# Left empty deliberately: no SageMaker or Unified Studio domain currently
+# exists. The Canvas reaper discovers domains at runtime and does not need an
+# id. Fill these in only if you create a Unified Studio domain by hand and want
+# it recorded in the Terraform outputs.
+sagemaker_domain_id = ""
+datazone_domain_id  = ""
+
+# ---- Standalone SageMaker AI Studio domain ("old way" experience) ----------
+# Kept ON. The cost model is the reason: a domain AT REST costs only its small,
+# near-empty EFS home volume -- cents a month. Nothing meters until you launch
+# an app (JupyterLab, Canvas) or run a job, both of which are deliberate acts
+# you control. So the domain can sit there between classes costing nothing
+# meaningful, ready for the old-way/new-way comparison.
+#
+# The retention_policy on the domain deletes the EFS volume on teardown, so
+# destroying it does not leave an orphaned volume billing quietly.
+create_sagemaker_ai_domain = true
+
+# ---------------------------------------------------------------- cost guards
+# Read this before touching the numbers below.
+#
+# June 2026 billed $218 for SageMaker. $202 of that was ONE Canvas session left
+# running after class (USE2-Canvas:Session-Hrs, ~$32-64/day). A $50 account
+# budget existed and did not help, because a budget only emails you -- it never
+# stops spend.
+#
+# The reaper is the thing that actually stops it. It costs essentially nothing
+# (a 128MB Lambda running hourly sits inside the always-free tier) and it is the
+# single highest-value resource in this file. Apply it BEFORE the parts of the
+# series that can run up a bill.
+
+canvas_reaper_enabled  = true
+canvas_reaper_schedule = "rate(1 hour)"
+
+# Idle threshold. Now measured from DescribeApp's LastUserActivityTimestamp, so
+# an app you are actively demoing is NOT killed. (The previous version read this
+# field off ListApps, where it does not exist, so every Canvas app was deleted
+# 60 minutes after launch regardless of use -- i.e. mid-demo.)
+canvas_max_idle_minutes = 60
+
+# Hard cap regardless of activity: the backstop for a session left open on a
+# second monitor. 10 hours -- comfortably longer than any teaching block, and
+# it turns a $200 accident into at most a few dollars.
+canvas_max_age_minutes = 180
+
+# Canvas is REGION-SCOPED and the June overrun was in us-east-2 while the guard
+# watched us-east-1. Sweep everywhere you might open Canvas.
+canvas_reaper_regions = "us-east-1,us-east-2"
+
+# Flip to true for one sweep if you change the thresholds and want to see what
+# would be deleted before it is.
+canvas_reaper_dry_run = false
+
+# Canvas only. JupyterLab is excluded on purpose: killing a notebook mid-lesson
+# loses unsaved work, and JupyterLab on t3.medium is cheap (~$2.50 for all of
+# June). Add "JupyterLab" here only if you want the stricter behaviour.
+kill_app_types = "Canvas,JupyterLab"
+# JupyterLab is reaped too, but on a TIGHTER idle threshold than Canvas.
+#
+# Why the Lambda rather than SageMaker's own idle shutdown: the native setting
+# (AppLifecycleManagement.IdleSettings) has a hard floor of 60 minutes --
+# IdleTimeoutInMinutes has min=60 in the API model. 30 minutes is only reachable
+# from the reaper.
+#
+# Both layers are enabled on purpose: the Lambda at 30 minutes is the real
+# guard, and the native 60-minute shutdown is a graceful backstop if the Lambda
+# ever stops running. Deleting a JupyterLab app kills the kernel -- files on the
+# space volume survive, in-memory state does not -- which is acceptable for an
+# app that has been idle half an hour.
+idle_minutes_by_type    = "JupyterLab=30,CodeEditor=30"
+max_age_minutes_by_type = ""
+
+
+# ---- Budgets + anomaly detection (budget.tf) -------------------------------
+# REQUIRED: set this or no budget, alarm, or anomaly monitor is created at all.
+# These are alarms, not brakes -- the reaper above is the brake.
+#
+# AWS sends a subscription confirmation for the anomaly alerts; the budget
+# notifications start working immediately without any confirmation step.
+budget_notification_email = "you@example.com"
+
+daily_budget_usd             = 15 # a forgotten Canvas session trips this in a day
+sagemaker_monthly_budget_usd = 40 # the whole series end-to-end costs a few dollars
+anomaly_alert_threshold_usd  = 10

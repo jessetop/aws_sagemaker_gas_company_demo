@@ -1,0 +1,117 @@
+#!/usr/bin/env python
+"""Custom SageMaker training entrypoint — "bring your own container" (BYOC).
+
+The teaching point vs. the framework/script-mode jobs elsewhere in this repo:
+here WE own the whole container. SageMaker runs it as literally:
+
+    docker run <image> train
+
+so `train` (this file, no extension) sits on the PATH and reads the SageMaker
+container contract directly — no framework glue:
+
+    /opt/ml/input/data/<channel>/     input channels (train, validation)
+    /opt/ml/input/config/hyperparameters.json   hyperparameters (all strings)
+    /opt/ml/model/                    write the fitted model here (SageMaker tars it to S3)
+    /opt/ml/output/failure            write the traceback here on failure
+
+The SAME image runs on a laptop (see run_local.sh) and on managed SageMaker infra
+(see launch_sagemaker_training.py) — that's the "build once, scale out" story.
+"""
+
+import json
+import os
+import sys
+import traceback
+
+import joblib
+import pandas as pd
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import accuracy_score, roc_auc_score
+
+PREFIX = "/opt/ml"
+INPUT = os.path.join(PREFIX, "input", "data")
+CONFIG = os.path.join(PREFIX, "input", "config")
+MODEL_DIR = os.path.join(PREFIX, "model")
+OUTPUT = os.path.join(PREFIX, "output")
+
+
+def _read_channel(name: str) -> pd.DataFrame:
+    """Read the single CSV in an input channel; label is the first column.
+
+    Header-robust: the standalone CSVs have a header row; pipeline-style CSVs are
+    headerless (label-first). Detect which by testing the first row.
+    """
+    directory = os.path.join(INPUT, name)
+    if not os.path.isdir(directory):
+        raise FileNotFoundError(f"channel '{name}' not mounted at {directory}")
+    csvs = sorted(f for f in os.listdir(directory) if f.endswith(".csv"))
+    if not csvs:
+        raise FileNotFoundError(f"no CSV files in channel '{name}' ({directory})")
+    path = os.path.join(directory, csvs[0])
+
+    with open(path) as fh:
+        first = fh.readline().strip().split(",")
+
+    def _is_num(tok: str) -> bool:
+        try:
+            float(tok)
+            return True
+        except ValueError:
+            return False
+
+    has_header = not all(_is_num(t) for t in first)
+    return pd.read_csv(path, header=0 if has_header else None)
+
+
+def main() -> None:
+    # SageMaker writes every hyperparameter as a STRING into this JSON file.
+    hyperparameters = {}
+    hp_path = os.path.join(CONFIG, "hyperparameters.json")
+    if os.path.exists(hp_path):
+        with open(hp_path) as fh:
+            hyperparameters = json.load(fh)
+
+    learning_rate = float(hyperparameters.get("learning-rate", 0.1))
+    n_estimators = int(hyperparameters.get("n-estimators", 150))
+    max_depth = int(hyperparameters.get("max-depth", 3))
+    print(f"[train] hyperparameters: lr={learning_rate} "
+          f"n_estimators={n_estimators} max_depth={max_depth}", flush=True)
+
+    train_df = _read_channel("train")
+    val_df = _read_channel("validation")
+    print(f"[train] loaded train={train_df.shape} validation={val_df.shape}", flush=True)
+
+    # Column 0 is the label (high_demand); the rest are features.
+    y_train, X_train = train_df.iloc[:, 0], train_df.iloc[:, 1:]
+    y_val, X_val = val_df.iloc[:, 0], val_df.iloc[:, 1:]
+
+    model = GradientBoostingClassifier(
+        learning_rate=learning_rate,
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        random_state=42,
+    )
+    model.fit(X_train, y_train)
+
+    proba = model.predict_proba(X_val)[:, 1]
+    preds = (proba >= 0.5).astype(int)
+    acc = accuracy_score(y_val, preds)
+    auc = roc_auc_score(y_val, proba)
+    # `name=value` lines so a SageMaker metric_definition regex can scrape them.
+    print(f"validation_accuracy={acc:.4f}", flush=True)
+    print(f"validation_auc={auc:.4f}", flush=True)
+
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    joblib.dump(model, os.path.join(MODEL_DIR, "model.joblib"))
+    print(f"[train] saved model -> {MODEL_DIR}/model.joblib", flush=True)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as exc:  # SageMaker reads /opt/ml/output/failure on error.
+        os.makedirs(OUTPUT, exist_ok=True)
+        with open(os.path.join(OUTPUT, "failure"), "w") as fh:
+            fh.write(traceback.format_exc())
+        print("TRAINING FAILED:", exc, file=sys.stderr)
+        sys.exit(1)

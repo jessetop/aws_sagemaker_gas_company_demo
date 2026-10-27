@@ -1,0 +1,11 @@
+# Keep shell scripts and code that run in Linux SageMaker containers as LF, so a
+# Windows checkout can't reintroduce CRLF (which breaks _repack_script_launcher.sh
+# and any shell entrypoint with "#015: not found" / trailing-\r path errors).
+*.sh   text eol=lf
+*.py   text eol=lf
+*.flow text eol=lf
+
+# Treat notebooks and archives as-is.
+*.ipynb -text
+*.tar.gz binary
+*.parquet binary

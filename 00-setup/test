@@ -1,0 +1,11 @@
+from sagemaker.predictor import Predictor
+from sagemaker.model_monitor import DataCaptureConfig
+
+predictor = Predictor(endpoint_name="customer-churn-prod")  # bind by name to the existing endpoint
+predictor.update_data_capture_config(
+    data_capture_config=DataCaptureConfig(
+        enable_capture=True,
+        sampling_percentage=20,
+        destination_s3_uri="s3://my-bucket/capture/"
+    )
+)
