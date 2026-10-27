@@ -355,9 +355,12 @@ label we invented. This one deletes that column. Unsupervised anomaly
 detection — "which rows don't look like the others" — because the expensive
 surprises in a utility are the ones nobody labelled in advance.
 
-**Here's how you make it:** `04-training/builtin-rcf/launch_rcf.py`. No
-training script at all: a built-in is an AWS-maintained container you address
-by name, so you bring data and hyperparameters and nothing else.
+**Here's how you make it:** the notebook
+`04-training/builtin-rcf/rcf_builtin.ipynb`, run in Studio JupyterLab — this is
+a notebook demo, which is what the slide actually asks for. No training script
+at all: a built-in is an AWS-maintained container you address by name, so you
+bring data and hyperparameters and nothing else.
+(`launch_rcf.py` is the same thing headless, for baking it ahead of time.)
 
 **Here's one I made earlier:** the Completed job, its image URI, and
 `feature_dim=18`.
