@@ -396,8 +396,15 @@ SageMaker contract — `SM_CHANNEL_TRAIN`, `SM_MODEL_DIR`, and metrics printed a
 **Slot:** right after training. **This is the best demo you have.**
 **Baked:** `training`, `tuning`.
 
-**Here's one I made earlier:** Experiments → compare the runs. Baseline plus the
-HPO trials, each with its hyperparameters and final metrics.
+**Here's one I made earlier:** run **Part 1** of
+[`05-experiments-tuning/experiments_and_mlflow.ipynb`](05-experiments-tuning/experiments_and_mlflow.ipynb)
+— baseline plus the HPO trials, each with its hyperparameters and final metrics.
+
+> 🔴 **Not the console.** Current Studio's **Experiments** nav item opens
+> **MLflow**; the standalone Experiments browser was Studio Classic only and this
+> account has no Classic domain. The runs still exist — verified via
+> `list_trial_components` on 2026-10-28 — but the only way to put them on screen
+> is the SDK. Which is what the notebook does.
 
 Then run the arc. It takes three minutes and it is worth more than any feature
 tour in the course:

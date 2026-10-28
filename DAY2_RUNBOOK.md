@@ -210,7 +210,20 @@ Point at **145 billable seconds**:
 **This is your strongest demo of the two days. Don't cut it.**
 
 ### Where to go
-**SageMaker AI console → Experiments** → `roi-smdemo-gas-experiment`
+🔴 **There is no Experiments UI any more. Do this from the notebook.**
+
+**Studio → JupyterLab →**
+`05-experiments-tuning/experiments_and_mlflow.ipynb` → **Part 1**
+
+Current Studio's left-nav **Experiments** item opens **MLflow** — AWS replaced
+the standalone Experiments browser with it. The old trial/trial-component UI was
+**Studio Classic only**, and this account's domains are new-Studio
+(`StudioWebPortal: ENABLED`, no Classic settings), so Classic is not available
+to fall back to.
+
+The runs themselves are fine — verified 2026-10-28, all five still returned by
+`list_trial_components`. Only the UI went away. Part 1 of the notebook queries
+them with boto3 and prints the table, which is what you show.
 
 Five runs are already there with real parameters and metrics:
 
@@ -684,7 +697,8 @@ Empty console panel | **Check the region** — N. Virginia |
 `--model-data` error | Shouldn't happen now; both deploy scripts resolve it themselves |
 Endpoint stuck Creating | Give it 8 min; talk over it or move to Demo 9 |
 Monitor endpoint missing | You skipped the morning step — run `monitor_demo_endpoint.py` |
-Experiments panel empty | `python shared/populate_studio_classic.py` |
+Experiments table empty in the notebook | the runs are gone, not the UI: re-run `04-training/launch_training.py` |
+Looking for an Experiments UI | there isn't one — Studio's Experiments nav IS MLflow. Use the notebook, Part 1 |
 Any permissions error | `python 00-setup/preflight.py` names the fix |
 
 **Fallback:** `TEST_LOG.md` has every verified number. If something dies on
