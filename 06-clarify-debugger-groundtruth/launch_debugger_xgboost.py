@@ -39,6 +39,7 @@ _root = _os.path.abspath(_os.path.dirname(__file__))
 while not _os.path.isdir(_os.path.join(_root, "shared")) and _root != _os.path.dirname(_root):
     _root = _os.path.dirname(_root)
 _sys.path.insert(0, _root)
+from shared import config
 from shared.config import add_common_args
 
 
@@ -68,7 +69,12 @@ def main() -> int:
         ],
     )
 
-    # Built-in rules evaluate common pathologies in parallel, for free.
+    # Built-in rules evaluate common pathologies in parallel. NOT free: each rule
+    # is its own Processing job on ml.t3.medium that bills for the FULL duration of
+    # the training job, not just the moment it fires. Measured 2026-10-28: training
+    # 768s on ml.m5.large (~$0.025) + 2 rules x 773s on ml.t3.medium (~$0.011 each).
+    # The rules cost about as much as the training. Fine here; a real line item on a
+    # six-hour job with eight rules attached.
     rules = [
         Rule.sagemaker(rule_configs.loss_not_decreasing()),
         Rule.sagemaker(rule_configs.overfit()),
