@@ -432,6 +432,275 @@ watching a model win.
 
 ---
 
+## Demo 7a — Debugger: looking inside the training job (5 min)
+
+**Slot:** Module 3, straight after Demo 7. **No deck slide asks for this one** —
+it is an extra, and the first thing to cut if Module 3 runs long.
+**Baked:** ✅ `roi-smdemo-gas-debugger-2026-10-28-04-34-32-149`, 768 billable
+seconds, both rules `NoIssuesFound`.
+
+### The framing
+
+Every other demo today showed you a training job's **inputs and outputs** — data
+in, metrics out, 145 billable seconds. The job itself was a black box that
+happened for three minutes and then was over.
+
+> *"You get one number at the end. Did the loss actually go down, or did it flatten
+> at round four and burn the other fifty-six? Did it start memorising the training
+> set halfway through? You cannot tell from an AUC. Debugger is how you watch the
+> training process instead of just its receipt."*
+
+### Here's how you make it
+
+`06-clarify-debugger-groundtruth/launch_debugger_xgboost.py`. Show the
+`DebuggerHookConfig` — three collections, `save_interval: 1` — and the two
+`Rule.sagemaker(...)` lines. That is the entire instrumentation.
+
+**Say the constraint out loud, because it is the thing people get wrong:**
+
+> *"This demo trains the same task on the same data as Demo 6, but with built-in
+> XGBoost instead of our scikit-learn script. Not because XGBoost is better —
+> because Debugger only hooks XGBoost, PyTorch, TensorFlow and MXNet. Our
+> `train.py` cannot emit a single tensor no matter what we configure. If you want
+> this visibility, it constrains your framework choice, and that is worth knowing
+> before you pick one."*
+
+🟡 **Hit cancel:** ~13 minutes. Nobody watches that.
+
+### Here's one I made earlier — verified
+
+**SageMaker AI → Training → Training jobs →**
+`roi-smdemo-gas-debugger-2026-10-28-04-34-32-149` → **Debugger** tab.
+
+| | |
+|---|---|
+Algorithm | built-in XGBoost `1.7-1`, **no training script** |
+Input | `pipeline/train/` — 104,956 rows × 11 features, headerless, label-first |
+Rounds | 60, tensors saved **every** round |
+Instance | ml.m5.large, **768 billable seconds** |
+Tensors | **123 objects** in `s3://<bucket>/debugger/xgboost/` |
+
+| metric | train | validation |
+|---|---|---|
+logloss | 0.2514 | **0.2741** |
+auc | 0.9469 | **0.9315** |
+
+**The loss curve is the picture.** Both curves descend and the gap between them
+stays small — that is what "not overfitting" looks like, rather than something
+you take on faith.
+
+### The rules, and why a boring result is the result
+
+| Rule | Outcome |
+|---|---|
+`LossNotDecreasing` | **NoIssuesFound** |
+`Overfit` | **NoIssuesFound** |
+
+> *"Both rules came back with nothing. That is the answer — not a failed demo.
+> The point is that something was watching for the two most common ways training
+> goes wrong, it was watching every round, and I did not write either check. A
+> rule that finds nothing is a rule that told you it is safe to stop looking."*
+
+If someone asks what a hit looks like: `LossNotDecreasing` fires when the loss
+flattens for a configured number of steps, and `Overfit` fires when validation
+loss rises while training loss keeps falling. Here, `0.2514` vs `0.2741` — a
+0.023 gap after 60 rounds — is well inside tolerance.
+
+### Two callbacks that make this demo earn its slot
+
+**Back to Demo 4 — rules are Processing jobs.** Go to **Processing → Processing
+jobs** and find them:
+
+```
+roi-smdemo-gas-debugger-20-LossNotDecreasing-ee820a8f
+roi-smdemo-gas-debugger-20-Overfit-5862312c
+```
+
+> *"There they are, in the same list as Clarify and Autopilot's data step. I told
+> you this morning that Processing is the substrate. A Debugger rule is a
+> Processing job with a rule container. Learn Processing once and you keep
+> recognising it all day."*
+
+**Back to Demo 7 — the job could have told us.** The hook captured
+`feature_importance` and `average_shap` collections alongside the loss, for no
+extra code.
+
+> *"Remember the arc from twenty minutes ago — we found that seventy percent of
+> the model was 'is it winter', and we found it by going and looking afterwards.
+> This training job captured feature importance and SHAP values while it trained,
+> automatically, because we listed two collection names. The finding that took us
+> a day was available at round one."*
+
+That is the most useful thing in this demo: not a feature tour, but *you already
+had this and did not look.*
+
+### The fourth 0.93 — worth 20 seconds
+
+| Path | Algorithm | Features | validation AUC |
+|---|---|---|---|
+Demo 6 — standalone training | sklearn GBM | 18 | 0.9235 |
+Demo 12 — Pipeline | sklearn GBM | 11 | 0.9261 |
+**Demo 7a — Debugger** | **built-in XGBoost** | **11** | **0.9315** |
+Demo 8 — HPO best trial | sklearn GBM | 18 | 0.9365 |
+
+> *"Four code paths, two different algorithms, two different feature sets, and
+> every one of them lands between 0.92 and 0.94. The model is not the variable
+> here. The question is — and we already know the question was too easy."*
+
+### 🔴 The cost warning, and a correction worth passing on
+
+The script's own comment said these rules run **"in parallel, for free."** That is
+wrong, and the measured numbers say so:
+
+| | Instance | Duration | |
+|---|---|---|---|
+Training job | ml.m5.large | 768 s | ~$0.025 |
+`LossNotDecreasing` | ml.t3.medium | 773 s | ~$0.011 |
+`Overfit` | ml.t3.medium | 773 s | ~$0.011 |
+
+> *"Each rule is its own instance, and it bills for the whole length of your
+> training job, not for the moment it finds something. Two rules here cost about
+> as much as the training did. At this scale that is five cents and who cares —
+> on a six-hour job on big instances, attaching eight rules is a real line item.
+> Rules are cheap. They are not free, and the docs will tell you they are."*
+
+Comment now corrected in the script.
+
+### Rebuild it
+
+```bash
+python 06-clarify-debugger-groundtruth/launch_debugger_xgboost.py          # ~13 min, ~$0.05
+python 06-clarify-debugger-groundtruth/launch_debugger_xgboost.py --wait   # + stream rule outcomes
+```
+
+⚠️ **It reads `pipeline/train/`, so the Pipeline must have run first.**
+`ml/gas/train/` will not work — it has a header row and built-in XGBoost cannot
+parse one. On a fresh account: `python 08-pipelines/build_pipeline.py --start`.
+
+---
+
+## Demo 7b — MLflow: the same arc, a second tracker (5 min)
+
+**Slot:** Module 3. Either straight after Demo 7, or **instead of** Demo 7's
+console walkthrough if you would rather give it from a notebook.
+**Baked:** ✅ MLflow experiment `gas-demand-the-honest-metric`, 4 runs.
+**Notebook:** [`05-experiments-tuning/experiments_and_mlflow.ipynb`](05-experiments-tuning/experiments_and_mlflow.ipynb)
+**Cost:** **$0.** Nothing hourly is created.
+
+### Why this exists
+
+Somebody always asks "can we just use MLflow?" This answers it with their own
+data instead of an opinion — and the answer turns out to be more interesting
+than yes or no, because **SageMaker has two different MLflow resources and only
+one of them is free.**
+
+### 🔴 The cost fact that is worth the whole demo
+
+| Resource | ARN | Billing |
+|---|---|---|
+**MLflow App** | `mlflow-app/...` | serverless, no Start/Stop, **$0 at rest** |
+**MLflow Tracking Server** | `mlflow-tracking-server/...` | **$0.60/hr** Small, from Created until Deleted |
+
+Both are addressed by ARN as the MLflow tracking URI. **The ARN is the only
+thing that tells them apart.** A Small tracking server left running is
+$14.40/day, ~$432/month, with no idle shutdown.
+
+> *"This account has had an MLflow App sitting in it since July. It was attached
+> to a Studio domain that got deleted, it outlived that domain by nearly four
+> months, and nobody noticed — because it costs nothing. If that had been a
+> tracking server instead, the same four months of not noticing would have been
+> about seventeen hundred dollars. Same product name. Different resource."*
+
+Verified from Cost Explorer: **August and September 2026 were $0.00** for all of
+SageMaker while that app existed the whole time.
+
+### What the notebook shows
+
+Four parts, ~20 cells. It is the only artifact in the repo that puts
+**SageMaker Experiments and MLflow side by side on the same question.**
+
+**Part 1 — SageMaker Experiments.** Pulls the five baked runs via the SDK:
+
+| run | learning_rate | max_depth | validation_auc |
+|---|---|---|---|
+hpo-...-001 | 0.2098 | 6 | **0.9365** |
+hpo-...-002 | 0.2886 | 4 | 0.9332 |
+hpo-...-003 | 0.0139 | 6 | 0.9244 |
+train-2026-10-26 (baseline) | 0.1 | 3 | 0.9235 |
+hpo-...-004 | 0.1679 | 2 | 0.9204 |
+
+`validation_accuracy` is `NaN` on the HPO rows **and that is correct** — a tuning
+job logs only the objective it was told to optimise. Say so before anyone asks.
+
+**Part 2 — MLflow: the arc.** The Demo 7 story, as four comparable runs:
+
+| run | features | label | validation AUC |
+|---|---|---|---|
+all-features | 18 | within county | **0.9235** |
+calendar-only | 6 | within county | 0.9044 |
+weather-only | 12 | within county | 0.8297 |
+**deseasonalised-label** | 18 | within county **AND month-of-year** | **0.5159** |
+
+Then feature importance, logged alongside the metrics so it is inspectable in
+the UI rather than asserted on a slide:
+
+```
+season_Winter   0.705
+obs_month       0.216
+elevation_m     0.047
+```
+
+> *"Same features in the top row and the bottom row. The only thing that changed
+> is what we asked. Ninety-two points to fifty-two."*
+
+**Part 3 — log a run live.** 15,000 rows, 40 trees, finishes while you talk.
+Three lines — `log_params`, `log_metric`, `set_tag` — and it appears next to the
+others. That is the entire MLflow API that matters.
+
+**Part 4 — which one.** The honest comparison:
+
+| | SageMaker Experiments | Managed MLflow |
+|---|---|---|
+Cost | free | App free · Server $0.60/hr |
+Logging | automatic from training jobs | you call `log_metric` |
+Works off SageMaker | no | yes — it is real MLflow |
+Portable off AWS | no | yes |
+
+> *"If everything you train is a SageMaker training job, Experiments gives you
+> this for free and you write no code. If your team already lives in MLflow, or
+> trains anywhere else, use MLflow. And neither one would have caught the problem
+> in part two — a tracker records what you measured. It cannot tell you the
+> question was too easy."*
+
+### Running it
+
+**Studio → JupyterLab →**
+`aws_sagemaker_gas_company_demo/05-experiments-tuning/experiments_and_mlflow.ipynb`
+
+⚠️ **Cell 1 is `%pip install -q mlflow sagemaker-mlflow`** — neither is in the
+stock Studio image, and `sagemaker-mlflow` is the plugin that lets MLflow
+authenticate with your IAM role. Without it, setting an ARN as the tracking URI
+fails. Run that cell before class and restart the kernel if it asks.
+
+### Rebuild the runs
+
+```bash
+python 05-experiments-tuning/mlflow_log_ablation.py        # ~6 min local, $0
+```
+
+Two traps already handled in that script, both of which cost time:
+
+1. **A shuffled-label control does not work on this dataset** and was removed.
+   Measured across seeds it returned AUC 0.3225 / 0.5073 / 0.3404 instead of
+   centring on 0.50 — because the label is a county-month aggregate, so the
+   effective sample is ~5,530 groups, not 150,000 rows. The deseasonalised run is
+   the control that behaves.
+2. **The deseasonalised splits are written to `ml/gas-deseason/`, never
+   `ml/gas/`.** Regenerating `ml/gas/` would overwrite the baked splits that
+   every other Day 2 demo depends on.
+
+---
+
 ## Demo 8 — Hyperparameter tuning (5 min)
 
 **Slot:** Module 3.
@@ -741,6 +1010,8 @@ Check before you commit to a demo in a running class.
 | 6a | Built-in algo (RCF) | ✅ verified | ✅ `roi-smdemo-gas-rcf-261027-0750` | ✅ |
 | 6 | Training | ✅ verified | ✅ | ✅ |
 | 7 | Experiments + metric arc | ✅ verified | ✅ baseline + 4 HPO trials | ✅ |
+| 7a | Debugger (loss curve + rules) | ✅ verified | ✅ `roi-smdemo-gas-debugger-2026-10-28-04-34-32-149` | ✅ extra — no deck slot, cut first |
+| 7b | MLflow + Experiments notebook | ✅ verified | ✅ `gas-demand-the-honest-metric`, 4 runs | ✅ $0 — needs the pip cell |
 | 8 | HPO | ✅ verified | ✅ `roi-smdemo-gas-hpo-261026-1514` | ✅ |
 | 9 | Autopilot | ✅ verified | ✅ `roi-smdemo-gas-autopilot` | ✅ from artifact — never re-run live ($9.26) |
 | 10 | Clarify | ✅ ported | see `--status` | check |

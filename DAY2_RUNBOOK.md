@@ -269,6 +269,128 @@ python shared/prepare_ml_data.py --deseasonalize    # -> 0.52
 
 ---
 
+## Demo 7a — Debugger (5 min)
+**Module 3, straight after Demo 7** · ✅ **verified** · **Baked:**
+`roi-smdemo-gas-debugger-2026-10-28-04-34-32-149`
+
+> **No deck slide asks for this.** It is an extra instructor demo in the most
+> crowded module of the course. If Module 3 is running long, this is the first
+> thing to cut — Demo 7 and Demo 8 both survive without it.
+
+### Where to go
+**SageMaker AI → Training → Training jobs →**
+`roi-smdemo-gas-debugger-2026-10-28-04-34-32-149` → the **Debugger** tab
+
+### What you're looking at (verified)
+| | |
+|---|---|
+Algorithm | built-in XGBoost `1.7-1`, **no training script** |
+Input | `pipeline/train/` — 104,956 rows × 11 features, headerless, label-first |
+Rounds | 60, tensors saved every round · **123 objects** in S3 |
+Billable | **768 seconds** on ml.m5.large |
+
+| metric | train | validation |
+|---|---|---|
+logloss | 0.2514 | **0.2741** |
+auc | 0.9469 | **0.9315** |
+
+| Rule | Outcome |
+|---|---|
+`LossNotDecreasing` | **NoIssuesFound** |
+`Overfit` | **NoIssuesFound** |
+
+### What to say
+Full narration: [`DEMOS.md`](DEMOS.md) **Demo 7a**. The four beats:
+
+1. **The framing** — *"every other demo showed you a training job's inputs and
+   outputs. The job itself was a black box. You get one number at the end — did
+   the loss go down, or flatten at round four and burn the other fifty-six?"*
+2. **The constraint, said out loud** — *"Debugger only hooks XGBoost, PyTorch,
+   TensorFlow and MXNet. Our `train.py` cannot emit a tensor no matter what we
+   configure. That visibility constrains your framework choice."*
+3. **A boring result is the result** — *"both rules found nothing. That's the
+   answer. Something watched for the two commonest failures, every round, and I
+   wrote neither check."*
+4. **The Demo 7 callback, which is the reason to give this at all** — the hook
+   also captured `feature_importance` and `average_shap` for free.
+   *"We found that seventy percent of the model was 'is it winter' by going and
+   looking afterwards. This job captured it while it trained. The finding that
+   took us a day was available at round one."*
+
+### Worth 30 seconds — rules are Processing jobs
+**Processing → Processing jobs** →
+`roi-smdemo-gas-debugger-20-LossNotDecreasing-ee820a8f` and
+`...-Overfit-5862312c`, sitting in the same list as Clarify.
+
+> *"A Debugger rule is a Processing job with a rule container. Same substrate
+> again."*
+
+### 🔴 And the correction — rules are not free
+The script used to say the rules run "for free." Measured: each rule is an
+`ml.t3.medium` that bills for the **full 773s** of the training job — the two
+together cost about as much as the training did (~$0.046 total).
+
+> *"Rules are cheap. They are not free, and the docs will tell you they are.
+> Eight rules on a six-hour job is a real line item."*
+
+### Rebuild it
+```bash
+python 06-clarify-debugger-groundtruth/launch_debugger_xgboost.py   # ~13 min, ~$0.05
+```
+⚠️ Reads `pipeline/train/` — the Pipeline must have run first. `ml/gas/train/`
+has a header row and built-in XGBoost cannot parse one.
+
+---
+
+## Demo 7b — MLflow + Experiments, in one notebook (5 min)
+**Module 3** · ✅ **verified end to end** · **Cost: $0**
+
+### Where to go
+**Studio → JupyterLab →**
+`aws_sagemaker_gas_company_demo/05-experiments-tuning/experiments_and_mlflow.ipynb`
+
+⚠️ **Run cell 1 (`%pip install -q mlflow sagemaker-mlflow`) BEFORE class** and
+restart the kernel if it asks. Neither package is in the stock Studio image.
+
+### The 5-minute path
+Part 1 (Experiments table) → Part 2 (the MLflow arc + feature importance) →
+Part 3 (log one run live) → Part 4 (the comparison table). Skip nothing; it is
+built to fit.
+
+### The numbers (verified)
+| MLflow run | AUC |
+|---|---|
+all-features | **0.9235** |
+calendar-only | 0.9044 |
+weather-only | 0.8297 |
+deseasonalised-label | **0.5159** |
+
+These reproduce DEMOS.md's Demo 7 arc to four decimals, through a completely
+different code path.
+
+### 🔴 The line that makes this demo
+> *"SageMaker has two MLflow resources. An MLflow **App** is serverless and costs
+> nothing at rest. An MLflow **tracking server** is sixty cents an hour from the
+> moment it is created until you delete it — four hundred and thirty dollars a
+> month. Both are addressed by ARN, so the ARN is the only thing that tells them
+> apart. This account has had an App sitting in it since July, orphaned to a
+> domain that was deleted, and nobody noticed because it is free. A tracking
+> server would have been about seventeen hundred dollars of not noticing."*
+
+Verified: Aug and Sep 2026 were **$0.00** for all of SageMaker in this account.
+
+### If it breaks
+| Symptom | Fix |
+|---|---|
+`UnsupportedUrlException` on `set_tracking_uri` | the `sagemaker-mlflow` plugin did not install — re-run cell 1, restart kernel |
+`get_experiment_by_name` returns None | the ablation runs are missing: `python 05-experiments-tuning/mlflow_log_ablation.py` |
+Part 3 is slow | drop `n=15000` to 5000 in the sample call |
+
+**Fallback:** Parts 1, 2 and 4 are read-only and need no training at all. If
+Part 3 misbehaves, skip it — the arc is the demo.
+
+---
+
 ## Demo 8 — Hyperparameter tuning (5 min)
 **Module 4** · **Baked:** ✅ `roi-smdemo-gas-hpo-261026-1514`
 
@@ -527,16 +649,18 @@ Say it out loud as you do it. It reinforces Demo 11's lesson.
 |---|---|---|---|
 Module 3 open | 6 — Training jobs | 5 | |
 Module 3 | 7 — Experiments + metric arc | 5 | **the keeper** |
+Module 3 | 7a — Debugger | 5 | **extra, no deck slot — cut this first** |
+Module 3 | 7b — MLflow + Experiments notebook | 5 | $0, notebook demo |
 Module 3 | 8 — HPO | 5 | |
 Module 3, slide 40 | 9 — Autopilot | 5 | deck has its own demo slot here |
 Module 3, Lab 6 | 10 — Clarify | 5 | moved from Day 1 |
 Module 4 | 11 — Deploy + infer | 5 | runs live |
 Module 5 | 12 — Monitor + Model Card | 5 | needs morning endpoint |
 
-~35 minutes across the day.
+~45 minutes across the day — 35 if you cut 7a and 7b.
 
-**If you're short:** cut 8 (HPO) — its best line is already inside Demo 7. Never
-cut 7.
+**If you're short:** cut 7a (Debugger) first — no deck slide asks for it. Then 8
+(HPO), whose best line is already inside Demo 7. Never cut 7.
 
 ---
 

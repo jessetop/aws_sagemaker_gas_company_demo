@@ -94,6 +94,18 @@ STEPS = [
         "feeds": "Demo: Experiments compare, HPO",
     },
     {
+        "key": "debugger",
+        "title": "A Debugger-instrumented training job (loss curve + rules)",
+        # Built-in XGBoost, because Debugger only hooks XGBoost/PyTorch/TF/MXNet
+        # and our sklearn train.py cannot emit tensors. NOTE: reads
+        # pipeline/train|validation, which only exist once 08-pipelines has run
+        # -- ml/gas/train has a HEADER and built-in XGBoost cannot parse one.
+        "cmd": ["06-clarify-debugger-groundtruth/launch_debugger_xgboost.py", "--wait"],
+        "mins": 6,
+        "cost": "cents",
+        "feeds": "Demo: Debugger (needs the Pipeline to have run first)",
+    },
+    {
         "key": "model",
         "title": "SageMaker Model object (free; Clarify needs it)",
         "cmd": ["shared/create_model.py"],
@@ -163,6 +175,11 @@ def probe(session, bucket: str) -> dict:
         state["model"] = True
     except Exception:
         state["model"] = False
+
+    try:
+        state["debugger"] = _s3_has("debugger/xgboost/")
+    except Exception:
+        state["debugger"] = None
 
     try:
         state["clarify"] = _s3_has("clarify/")
